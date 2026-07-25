@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================================
+   MobilMint — Design tokens (PRD 04-uiux-design-admin.md bagian 1.1)
+   Arah desain: iOS SaaS storefront — bersih, terang, lapang.
+   ===================================================================== */
+:root {
+  --bg:            #f0f2f5;
+  --surface:       #ffffff;
+  --surface-alt:   #f8fafc;
+  --border:        #e5e7eb;
+  --border-strong: #d1d5db;
+
+  --text:          #0f172a;
+  --text-muted:    #64748b;
+  --text-subtle:   #94a3b8;
+
+  /* Warna resmi brand MobilMint — disampling langsung dari file logo
+     (public/logo-mobilmint-blue.jpeg → RGB 0,110,173). Dipakai juga
+     sebagai --accent supaya identitas brand konsisten dengan warna
+     interaktif di seluruh aplikasi (link, tab aktif, chart utama). */
+  --brand:         #006ead;
+
+  --accent:        #006ead;
+  --accent-hover:  #005a8e;
+  --accent-soft:   #ebf3f8;
+
+  --cta:           #0f172a;
+  --cta-hover:     #1e293b;
+
+  --success:            #16a34a;
+  --success-soft:       #f0fdf4;
+  --success-deep:       #15803d;
+  --success-deep-soft:  #dcfce7;
+  --warning:       #f59e0b;
+  --warning-soft:  #fffbeb;
+  --warning-deep:  #b45309;
+  --danger:        #dc2626;
+  --danger-soft:   #fef2f2;
+  --neutral-soft:  #f1f5f9;
+
+  --radius-sm: 8px;
+  --radius:    14px;
+  --radius-lg: 20px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow:    0 4px 16px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.10);
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-page text-ink font-sans text-body antialiased;
+  }
+
+  /* Semua angka rata kolom */
+  table,
+  input[type='number'],
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+  }
+}
+
+@layer components {
+  /* Kartu standar: tanpa border, shadow halus */
+  .mm-card {
+    @apply bg-surface rounded-lg shadow p-5;
+  }
+
+  .mm-card-flat {
+    @apply bg-surface rounded-lg border border-line p-4;
+  }
+
+  .mm-label-caps {
+    @apply text-caps uppercase text-ink-subtle;
+  }
+
+  /* Navbar sticky glassmorphism */
+  .mm-navbar {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mm-skeleton {
+    @apply relative overflow-hidden bg-neutral-soft rounded;
+  }
+
+  .mm-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.65),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* Scrollbar halus untuk area tabel */
+  .mm-scroll::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .mm-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 999px;
+  }
+  .mm-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Recharts: hilangkan outline fokus default */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
+}
+
+@media print {
+  .mm-no-print {
+    display: none !important;
+  }
+}
