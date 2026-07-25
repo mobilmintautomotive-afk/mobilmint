@@ -6,6 +6,22 @@ import { Skeleton } from '@/components/ui/primitives'
 
 export type MetricFormat = 'money' | 'number' | 'percent' | 'text'
 
+/**
+ * Angka tetap tampil penuh (presisi rupiah dipertahankan), ukurannya yang
+ * menyesuaikan supaya tidak pernah wrap jadi 2 baris.
+ *
+ * Dua faktor menentukan lebar yang tersedia: panjang teks, dan jumlah kolom
+ * grid di breakpoint itu. Yang paling sempit justru `xl` (1280px) — di situ
+ * grid sudah 4 kolom tapi layar belum lebar, jadi ukurannya paling kecil.
+ * Di `2xl` kartunya melebar lagi sehingga angka boleh kembali besar.
+ */
+function ukuranAngka(teks: string, hero: boolean) {
+  const panjang = teks.length > 13
+  if (hero) return panjang ? 'text-[30px] xl:text-[26px] 2xl:text-metric' : 'text-metric-hero'
+  if (panjang) return 'text-[26px] xl:text-[20px] 2xl:text-[27px]'
+  return 'text-[26px] xl:text-[24px] 2xl:text-metric'
+}
+
 export function MetricCard({
   label,
   value,
@@ -62,12 +78,7 @@ export function MetricCard({
         ) : null}
       </div>
 
-      <p
-        className={cn(
-          'tnum text-ink',
-          hero ? 'text-metric-hero' : 'text-[26px] font-bold leading-tight sm:text-metric',
-        )}
-      >
+      <p className={cn('tnum font-bold leading-tight text-ink', ukuranAngka(display, hero))}>
         {display}
       </p>
 
