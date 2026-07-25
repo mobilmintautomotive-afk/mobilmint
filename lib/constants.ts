@@ -127,6 +127,54 @@ export const ASSET_STATUS_LABEL: Record<AssetStatus, string> = {
   DIHAPUS: 'Dihapus',
 }
 
+/* ----------------------------- Kas & Bank ---------------------------- */
+
+export const CASH_TYPE = [
+  'SETORAN_INVESTOR',
+  'PENARIKAN_INVESTOR',
+  'PEMBELIAN_UNIT',
+  'PERBAIKAN',
+  'PENJUALAN_UNIT',
+  'BIAYA_PENJUALAN',
+  'BIAYA_OPERASIONAL',
+  'PEMBELIAN_ASET',
+  'SETOR_MODAL_PENGELOLA',
+  'PRIVE_PENGELOLA',
+  'TRANSFER_MASUK',
+  'TRANSFER_KELUAR',
+  'PENYESUAIAN',
+] as const
+export type CashType = (typeof CASH_TYPE)[number]
+
+export const CASH_TYPE_LABEL: Record<CashType, string> = {
+  SETORAN_INVESTOR: 'Setoran Investor',
+  PENARIKAN_INVESTOR: 'Penarikan Investor',
+  PEMBELIAN_UNIT: 'Pembelian Unit',
+  PERBAIKAN: 'Perbaikan',
+  PENJUALAN_UNIT: 'Penjualan Unit',
+  BIAYA_PENJUALAN: 'Biaya Penjualan',
+  BIAYA_OPERASIONAL: 'Biaya Operasional',
+  PEMBELIAN_ASET: 'Pembelian Aset',
+  SETOR_MODAL_PENGELOLA: 'Setor Modal Pengelola',
+  PRIVE_PENGELOLA: 'Pencairan Hak Pengelola',
+  TRANSFER_MASUK: 'Transfer Masuk',
+  TRANSFER_KELUAR: 'Transfer Keluar',
+  PENYESUAIAN: 'Penyesuaian',
+}
+
+/**
+ * Jenis mutasi yang boleh diinput manual. Sisanya dicatat otomatis oleh
+ * trigger database dari transaksi aslinya — kalau diinput manual lagi,
+ * uangnya terhitung dua kali.
+ */
+export const CASH_TYPE_MANUAL = [
+  'SETOR_MODAL_PENGELOLA',
+  'PRIVE_PENGELOLA',
+  'TRANSFER_MASUK',
+  'TRANSFER_KELUAR',
+  'PENYESUAIAN',
+] as const satisfies readonly CashType[]
+
 /** Warna seri chart — samakan dengan --accent di app/globals.css (brand blue #006ead). */
 export const CHART_COLORS = {
   accent: '#006ead',

@@ -23,11 +23,31 @@ begin;
 
 -- Bersihkan data lama (urutan mengikuti dependensi FK)
 truncate table
+  cash_ledger, bank_accounts,
   profit_sharing_details, profit_sharings, car_sales, repairs, car_fundings,
   purchases, investor_ledger, investor_contracts, cars, customers,
   sales_persons, vendors, suppliers, investment_tiers, profiles, investors,
   operational_expenses, company_assets
 restart identity cascade;
+
+-- ---------------------------------------------------------------------
+-- Rekening perusahaan — dibuat PALING AWAL supaya trigger kas punya
+-- rekening tujuan saat transaksi di bawah dijalankan.
+--
+-- saldo_awal sengaja 0 karena di seed ini semua arus uang dicatat dari
+-- nol. Kolom saldo_awal dipakai kalau aplikasi mulai dipakai di tengah
+-- jalan dan rekening sudah punya isi.
+-- ---------------------------------------------------------------------
+insert into bank_accounts (id, nama, nama_bank, no_rekening, atas_nama, saldo_awal, tanggal_saldo_awal, is_default) values
+  ('77777777-0000-4000-8000-000000000001', 'Rekening Operasional', 'BCA', '2761234567', 'PT MobilMint Indonesia', 0, date '2026-01-01', true),
+  ('77777777-0000-4000-8000-000000000002', 'Rekening Cadangan',    'Mandiri', '1230009876', 'PT MobilMint Indonesia', 0, date '2026-01-01', false);
+
+-- Modal awal pengelola (uang sendiri, bukan dana investor). Ini yang
+-- menalangi operasional dealer sebelum bagi hasil pertama masuk.
+select catat_mutasi_kas(
+  '77777777-0000-4000-8000-000000000001', date '2026-01-05',
+  'SETOR_MODAL_PENGELOLA', 100000000, 'Modal awal pengelola'
+);
 
 -- ---------------------------------------------------------------------
 -- Golongan Investasi — berbasis rentang nilai setoran
@@ -319,8 +339,20 @@ insert into operational_expenses (tanggal, kategori, keterangan, nominal) values
   (date '2026-06-30','Sewa','Sewa showroom Juni', 6000000),
   (date '2026-07-05','Listrik','Listrik & internet Juli', 1500000);
 
+-- ---------------------------------------------------------------------
+-- Contoh pencairan hak pengelola ke rekening pribadi (prive).
+-- Dibatasi fungsi cairkan_hak_pengelola: tidak boleh melebihi
+-- modal disetor + porsi bagi hasil - operasional - aset - yang sudah ditarik.
+-- ---------------------------------------------------------------------
+select cairkan_hak_pengelola(
+  '77777777-0000-4000-8000-000000000001', 20000000, date '2026-07-20',
+  'Pencairan hak pengelola Juli'
+);
+
 commit;
 
 -- Verifikasi cepat: total saldo investor harus sama dengan SUM ledger
 -- select * from v_investor_balance;
 -- select * from v_dashboard_summary;
+-- select * from v_bank_balance;
+-- select * from v_hak_pengelola;

@@ -4,17 +4,19 @@ import { todayJakarta } from '@/lib/format'
 
 export type NeracaPengelola = {
   perTanggal: string
+  /* Aset */
+  kasPengelola: number
   asetTetapNilaiBuku: number
-  modalPengelola: number
-  /**
-   * Estimasi historis SEKADAR INFORMASI — bukan saldo kas riil, karena
-   * praktiknya porsi pengelola langsung ditarik begitu bagi hasil diproses,
-   * tidak tertahan di pool. Jangan dimasukkan ke tabel neraca (biar tidak
-   * menyesatkan seolah ada kas yang benar-benar mengendap).
-   */
-  estimasiLabaDitahanKalauTidakDitarik: number
+  totalAset: number
+  /* Modal */
+  modalDisetor: number
+  labaDitahan: number
+  prive: number
+  totalModal: number
+  /* Rincian pembentuk laba ditahan */
+  porsiBagiHasil: number
   totalOpex: number
-  porsiPengelolaRealized: number
+  akumulasiPenyusutan: number
   rincianAset: {
     id: string
     nama: string
@@ -28,43 +30,52 @@ export type NeracaPengelola = {
 
 const KOSONG: NeracaPengelola = {
   perTanggal: '',
+  kasPengelola: 0,
   asetTetapNilaiBuku: 0,
-  modalPengelola: 0,
-  estimasiLabaDitahanKalauTidakDitarik: 0,
+  totalAset: 0,
+  modalDisetor: 0,
+  labaDitahan: 0,
+  prive: 0,
+  totalModal: 0,
+  porsiBagiHasil: 0,
   totalOpex: 0,
-  porsiPengelolaRealized: 0,
+  akumulasiPenyusutan: 0,
   rincianAset: [],
 }
 
 /**
- * Neraca Pengelola — SENGAJA sederhana, hanya Aset Tetap perusahaan.
+ * Neraca Pengelola — posisi keuangan pengelola SAJA, terpisah dari dana
+ * investor. Dana investor punya neracanya sendiri per investor.
  *
- * Kenapa bukan "kas pengelola" seperti versi awal: begitu bagi hasil
- * diproses, porsi pengelola pada dasarnya langsung ditarik ke rekening
- * pribadi, tidak tertahan di pool. Jadi tidak ada baris "kas" yang jujur
- * bisa ditampilkan sebagai bagian neraca resmi — Aset Tetap adalah satu-
- * satunya jejak uang pengelola yang benar-benar masih "ada wujudnya" di
- * bisnis. Aset = Modal selalu balance trivial (harga_beli - penyusutan =
- * nilai_buku = modal yang tertanam di aset itu).
+ * Kenapa kasnya dihitung, bukan diambil dari saldo rekening:
+ * satu rekening bank menampung uang investor DAN uang pengelola sekaligus,
+ * jadi saldo rekening bukan milik pengelola seluruhnya. Yang benar-benar
+ * hak pengelola = modal yang ia setor + bagian labanya, dikurangi beban
+ * yang ia tanggung (operasional & pembelian aset) dan yang sudah ia tarik.
  *
- * Untuk Laba Rugi Pengelola, lihat /laporan/laba-rugi — baris paling
- * bawah ("Laba Bersih Pengelola") itu sudah tepat, tidak perlu laporan
- * terpisah.
+ * Identitas neraca terjaga karena pembelian aset mengurangi kas tapi
+ * menambah aset tetap dengan nilai yang sama; yang menggerus modal cuma
+ * penyusutannya.
+ *
+ *   Aset  = Kas Pengelola + Aset Tetap (nilai buku)
+ *   Modal = Modal Disetor + Laba Ditahan - Prive
+ *   Laba Ditahan = Porsi Bagi Hasil - Biaya Operasional - Penyusutan
  */
 export async function getNeracaPengelola() {
   return aman<NeracaPengelola>(async (db) => {
-    const [sharings, opex, aset] = await Promise.all([
-      db.from('profit_sharings').select('porsi_pengelola').eq('is_reversed', false),
-      db.from('operational_expenses').select('nominal'),
-      db.from('v_asset_book_value').select('*').eq('status', 'AKTIF'),
+    const [hak, aset] = await Promise.all([
+      db.from('v_hak_pengelola').select('*').single(),
+      db.from('v_asset_book_value').select('*').neq('status', 'DIHAPUS'),
     ])
-    if (sharings.error) throw new Error(sharings.error.message)
+    if (hak.error) throw new Error(hak.error.message)
+    if (aset.error) throw new Error(aset.error.message)
 
-    const porsiPengelolaRealized = ((sharings.data ?? []) as any[]).reduce(
-      (s, r) => s + num(r.porsi_pengelola),
-      0,
-    )
-    const totalOpex = ((opex.data ?? []) as any[]).reduce((s, r) => s + num(r.nominal), 0)
+    const h = hak.data as any
+    const modalDisetor = num(h.modal_disetor)
+    const porsiBagiHasil = num(h.porsi_bagi_hasil)
+    const totalOpex = num(h.biaya_operasional)
+    const belanjaAset = num(h.pembelian_aset)
+    const prive = num(h.sudah_dicairkan)
 
     const rincianAset = ((aset.data ?? []) as any[]).map((a) => ({
       id: a.id as string,
@@ -75,16 +86,25 @@ export async function getNeracaPengelola() {
       akumulasi_penyusutan: num(a.akumulasi_penyusutan),
       nilai_buku: num(a.nilai_buku),
     }))
+
     const asetTetapNilaiBuku = rincianAset.reduce((s, a) => s + a.nilai_buku, 0)
-    const totalHargaBeliAset = rincianAset.reduce((s, a) => s + a.harga_beli, 0)
+    const akumulasiPenyusutan = rincianAset.reduce((s, a) => s + a.akumulasi_penyusutan, 0)
+
+    const kasPengelola = modalDisetor + porsiBagiHasil - totalOpex - belanjaAset - prive
+    const labaDitahan = porsiBagiHasil - totalOpex - akumulasiPenyusutan
 
     return {
       perTanggal: todayJakarta(),
+      kasPengelola,
       asetTetapNilaiBuku,
-      modalPengelola: asetTetapNilaiBuku,
-      estimasiLabaDitahanKalauTidakDitarik: porsiPengelolaRealized - totalOpex - totalHargaBeliAset,
+      totalAset: kasPengelola + asetTetapNilaiBuku,
+      modalDisetor,
+      labaDitahan,
+      prive,
+      totalModal: modalDisetor + labaDitahan - prive,
+      porsiBagiHasil,
       totalOpex,
-      porsiPengelolaRealized,
+      akumulasiPenyusutan,
       rincianAset,
     }
   }, KOSONG)

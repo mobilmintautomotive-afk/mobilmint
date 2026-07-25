@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import {
   CAR_STATUS,
+  CASH_TYPE_MANUAL,
   PAYMENT_METHOD,
   REPAIR_STATUS,
   SUPPLIER_TYPE,
@@ -249,6 +250,37 @@ export const opexSchema = z.object({
   kategori: wajib('Kategori'),
   keterangan: opsional,
   nominal: uang.refine((v) => v > 0, 'Nominal wajib diisi'),
+})
+
+/* ----------------------------- Kas & Bank ---------------------------- */
+
+export const bankSchema = z.object({
+  id: z.string().uuid().optional(),
+  nama: wajib('Nama rekening'),
+  nama_bank: wajib('Nama bank'),
+  no_rekening: wajib('Nomor rekening'),
+  atas_nama: wajib('Atas nama'),
+  saldo_awal: uang.default(0),
+  tanggal_saldo_awal: tanggal,
+  is_default: z.boolean().default(false),
+  is_active: z.boolean().default(true),
+  catatan: opsional,
+})
+
+export const mutasiKasSchema = z.object({
+  bank_account_id: z.string().uuid('Pilih rekening dulu'),
+  tanggal: tanggal,
+  tipe: z.enum(CASH_TYPE_MANUAL, 'Jenis mutasi tidak bisa diinput manual'),
+  /** Selalu positif di form; arah masuk/keluar ditentukan dari `tipe`. */
+  nominal: uang.refine((v) => v > 0, 'Nominal wajib diisi'),
+  keterangan: wajib('Keterangan'),
+})
+
+export const priveSchema = z.object({
+  bank_account_id: z.string().uuid('Pilih rekening dulu'),
+  tanggal: tanggal,
+  nominal: uang.refine((v) => v > 0, 'Nominal wajib diisi'),
+  keterangan: opsional,
 })
 
 /* ------------------------------ Pengguna ----------------------------- */

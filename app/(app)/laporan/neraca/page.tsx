@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Boxes, Car, HandCoins, TrendingUp, Wallet } from 'lucide-react'
+import { Banknote, Boxes, Car, HandCoins, TrendingUp, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { EntitasSelector } from '@/components/laporan/entitas-selector'
 import { MetricCard } from '@/components/shared/metric-card'
@@ -17,9 +17,11 @@ import { getNeracaPengelola } from '@/lib/queries/neraca'
 import { getDashboardInvestor } from '@/lib/queries/investor'
 import { getInvestorRingkas } from '@/lib/queries/master'
 import { getCurrentRole } from '@/lib/dev-role'
-import { formatTanggal } from '@/lib/format'
+import { formatRupiah, formatTanggal } from '@/lib/format'
 
 export const metadata: Metadata = { title: 'Neraca' }
+
+const formatRp = (n: number) => formatRupiah(n)
 
 export default async function NeracaPage({
   searchParams,
@@ -65,17 +67,31 @@ async function NeracaPengelolaView() {
   return (
     <>
       <div className="mb-5 rounded-lg bg-accent-soft p-4 text-label text-accent">
-        <strong>Cara baca:</strong> Begitu bagi hasil diproses, porsi pengelola pada dasarnya
-        langsung ditarik ke rekening pribadi — tidak ada kas yang tertahan di pool. Karena itu
-        Neraca Pengelola hanya berisi Aset Tetap perusahaan. Untuk laba rugi periode berjalan,
-        lihat{' '}
+        <strong>Cara baca:</strong> Ini posisi uang pengelola saja, terpisah dari dana investor.
+        Kas di sini bukan saldo rekening bank — satu rekening menampung uang investor dan pengelola
+        sekaligus, jadi yang ditampilkan hanya bagian yang benar-benar hak pengelola. Untuk laba
+        rugi periode berjalan, lihat{' '}
         <Link href="/laporan/laba-rugi" className="underline">
           Laporan Laba Rugi
-        </Link>{' '}
-        — baris &ldquo;Laba Bersih Pengelola&rdquo; di sana sudah tepat.
+        </Link>
+        .
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Kas Pengelola"
+          value={data.kasPengelola}
+          format="money"
+          icon={Wallet}
+          tone={data.kasPengelola < 0 ? 'danger' : 'default'}
+          subtext="Hak yang belum ditarik"
+          action={
+            <InfoHint>
+              Modal disetor ditambah porsi bagi hasil, dikurangi biaya operasional, pembelian aset,
+              dan yang sudah dicairkan ke rekening pribadi.
+            </InfoHint>
+          }
+        />
         <MetricCard
           label="Aset Tetap (Nilai Buku)"
           value={data.asetTetapNilaiBuku}
@@ -84,34 +100,33 @@ async function NeracaPengelolaView() {
           subtext={`${data.rincianAset.length} aset tercatat`}
         />
         <MetricCard
-          label="Total Porsi Pengelola (Realized)"
-          value={data.porsiPengelolaRealized}
+          label="Porsi Bagi Hasil"
+          value={data.porsiBagiHasil}
           format="money"
           icon={HandCoins}
           tone="success"
-          subtext="Sejak awal, dari semua bagi hasil"
+          subtext="Sejak awal, dari semua unit terjual"
         />
         <MetricCard
-          label="Estimasi Laba Ditahan"
-          value={data.estimasiLabaDitahanKalauTidakDitarik}
+          label="Sudah Dicairkan (Prive)"
+          value={data.prive}
           format="money"
-          icon={Wallet}
-          subtext="Kalau semua profit TIDAK ditarik — bukan saldo riil"
-          action={
-            <InfoHint>
-              Angka informasi saja: porsi pengelola dikurangi biaya operasional dan pembelian
-              aset, seandainya tidak pernah ditarik. Dalam praktiknya biasanya langsung ditarik,
-              jadi ini bukan saldo kas yang benar-benar ada.
-            </InfoHint>
-          }
+          icon={Banknote}
+          subtext="Ditarik ke rekening pribadi"
         />
       </div>
 
       <Card className="mt-5">
-        <CardTitle className="mb-4">Neraca Pengelola per {formatTanggal(data.perTanggal || new Date())}</CardTitle>
+        <CardTitle className="mb-4">
+          Neraca Pengelola per {formatTanggal(data.perTanggal || new Date())}
+        </CardTitle>
         <div className="grid gap-6 sm:grid-cols-2">
           <div>
             <p className="mm-label-caps mb-2">Aset</p>
+            <div className="flex items-center justify-between py-1.5">
+              <span className="text-body text-ink">Kas Pengelola</span>
+              <Money value={data.kasPengelola} colored />
+            </div>
             <div className="flex items-center justify-between py-1.5">
               <span className="text-body text-ink">Aset Tetap (Nilai Buku)</span>
               <Money value={data.asetTetapNilaiBuku} />
@@ -119,22 +134,35 @@ async function NeracaPengelolaView() {
             <Separator className="my-2" />
             <div className="flex items-center justify-between py-1">
               <span className="font-semibold text-ink">Total Aset</span>
-              <Money value={data.asetTetapNilaiBuku} size="lg" className="font-semibold" />
+              <Money value={data.totalAset} size="lg" className="font-semibold" />
             </div>
           </div>
           <div>
             <p className="mm-label-caps mb-2">Modal</p>
             <div className="flex items-center justify-between py-1.5">
-              <span className="text-body text-ink">Modal Ditanamkan ke Aset Tetap</span>
-              <Money value={data.modalPengelola} />
+              <span className="text-body text-ink">Modal Disetor</span>
+              <Money value={data.modalDisetor} />
+            </div>
+            <div className="flex items-center justify-between py-1.5">
+              <span className="text-body text-ink">Laba Ditahan</span>
+              <Money value={data.labaDitahan} colored />
+            </div>
+            <div className="flex items-center justify-between py-1.5">
+              <span className="text-body text-ink">Prive (Pencairan)</span>
+              <Money value={-data.prive} colored />
             </div>
             <Separator className="my-2" />
             <div className="flex items-center justify-between py-1">
               <span className="font-semibold text-ink">Total Modal</span>
-              <Money value={data.modalPengelola} size="lg" className="font-semibold" />
+              <Money value={data.totalModal} size="lg" className="font-semibold" />
             </div>
           </div>
         </div>
+
+        <p className="mt-4 rounded-lg bg-surface-alt p-3 text-label text-ink-muted">
+          Laba ditahan = porsi bagi hasil {formatRp(data.porsiBagiHasil)} − biaya operasional{' '}
+          {formatRp(data.totalOpex)} − penyusutan aset {formatRp(data.akumulasiPenyusutan)}.
+        </p>
       </Card>
 
       <div className="mt-5">
