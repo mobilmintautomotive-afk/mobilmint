@@ -186,87 +186,49 @@ export async function getUnitSiapJual() {
   }, [] as any[])
 }
 
-/* ----------------------------- Bagi Hasil ---------------------------- */
+/* ---------------------------- Pencairan Dana --------------------------- */
 
-/** Tab 1 — unit TERJUAL yang belum dibagi hasil, lengkap dengan simulasinya. */
-export async function getMenungguBagiHasil() {
-  return aman(async (db) => {
-    const sales = unwrap(
-      await db
-        .from('car_sales')
-        .select('*, cars(merek, tipe, tahun, no_polisi, status)')
-        .eq('is_profit_shared', false)
-        .order('tanggal_jual', { ascending: true }),
-    ) as any[]
-
-    if (sales.length === 0) return []
-
-    const carIds = sales.map((s) => s.car_id)
-    const fundings = unwrap(
-      await db
-        .from('car_fundings')
-        .select('car_id, investor_id, amount, nisbah_investor_pct, investors(nama)')
-        .in('car_id', carIds),
-    ) as any[]
-
-    const perUnit = new Map<string, any[]>()
-    for (const f of fundings) {
-      if (!perUnit.has(f.car_id)) perUnit.set(f.car_id, [])
-      perUnit.get(f.car_id)!.push({
-        investor_id: f.investor_id,
-        nama: f.investors?.nama ?? '-',
-        amount: num(f.amount),
-        nisbah_investor_pct: num(f.nisbah_investor_pct),
-      })
-    }
-
-    return sales.map((s) => ({
-      id: s.id as string,
-      no_transaksi: s.no_transaksi as string,
-      car_id: s.car_id as string,
-      unit: s.cars ? `${s.cars.merek} ${s.cars.tipe} ${s.cars.tahun}` : '-',
-      no_polisi: s.cars?.no_polisi ?? null,
-      tanggal_jual: s.tanggal_jual as string,
-      harga_jual: num(s.harga_jual),
-      hpp_snapshot: num(s.hpp_snapshot),
-      laba_bersih: num(s.laba_bersih),
-      fundings: perUnit.get(s.car_id) ?? [],
-    }))
-  }, [] as any[])
-}
-
-/** Tab 2 — riwayat bagi hasil yang sudah diproses. */
-export async function getRiwayatBagiHasil() {
+/**
+ * Semua baris bagi hasil per investor per unit (flat), lengkap status
+ * pencairannya. Bagi hasil sendiri sudah diproses OTOMATIS saat penjualan
+ * disimpan (lihat app/actions/sales.ts) — halaman ini murni soal apakah
+ * dananya sudah benar-benar ditransfer ke rekening investor atau belum.
+ */
+export async function getPencairanDana() {
   return aman(async (db) => {
     const rows = unwrap(
       await db
-        .from('profit_sharings')
+        .from('profit_sharing_details')
         .select(
-          '*, cars(merek, tipe, tahun, no_polisi), car_sales(no_transaksi, tanggal_jual), profit_sharing_details(*, investors(nama))',
+          `*, investors(nama),
+           profit_sharings!inner(id, no_transaksi, tanggal_proses, is_reversed,
+             cars(merek, tipe, tahun, no_polisi),
+             car_sales(no_transaksi, tanggal_jual))`,
         )
-        .order('tanggal_proses', { ascending: false })
+        .eq('profit_sharings.is_reversed', false)
+        .order('tanggal_dicairkan', { ascending: false, nullsFirst: true })
         .range(0, LIST_LIMIT - 1),
     ) as any[]
 
-    return rows.map((r) => ({
-      ...r,
-      laba_bersih: num(r.laba_bersih),
-      porsi_investor: num(r.porsi_investor),
-      porsi_pengelola: num(r.porsi_pengelola),
-      unit: r.cars ? `${r.cars.merek} ${r.cars.tipe} ${r.cars.tahun}` : '-',
-      no_polisi: r.cars?.no_polisi ?? null,
-      tanggal_jual: r.car_sales?.tanggal_jual ?? null,
-      details: ((r.profit_sharing_details ?? []) as any[])
-        .map((d) => ({
-          ...d,
-          nama: d.investors?.nama ?? '-',
-          modal_awal: num(d.modal_awal),
-          bagi_hasil: num(d.bagi_hasil),
-          modal_kembali: num(d.modal_kembali),
-          total_kembali: num(d.total_kembali),
-          porsi_pct: num(d.porsi_pct),
-        }))
-        .sort((a, z) => z.modal_awal - a.modal_awal),
-    }))
+    return rows.map((d) => {
+      const ps = d.profit_sharings
+      return {
+        id: d.id as string,
+        investor_id: d.investor_id as string,
+        investor_nama: d.investors?.nama ?? '-',
+        modal_awal: num(d.modal_awal),
+        porsi_pct: num(d.porsi_pct),
+        bagi_hasil: num(d.bagi_hasil),
+        sudah_ditransfer: Boolean(d.sudah_ditransfer),
+        tanggal_dicairkan: d.tanggal_dicairkan as string | null,
+        bukti_transfer_url: d.bukti_transfer_url as string | null,
+        no_transaksi_bagi_hasil: ps?.no_transaksi ?? '-',
+        no_transaksi_jual: ps?.car_sales?.no_transaksi ?? '-',
+        tanggal_jual: ps?.car_sales?.tanggal_jual ?? null,
+        tanggal_proses: ps?.tanggal_proses ?? null,
+        unit: ps?.cars ? `${ps.cars.merek} ${ps.cars.tipe} ${ps.cars.tahun}` : '-',
+        no_polisi: ps?.cars?.no_polisi ?? null,
+      }
+    })
   }, [] as any[])
 }

@@ -178,11 +178,23 @@ begin
   ) returning id into v_sale;
   update cars set status = 'TERJUAL' where id = v_car;
 
+  -- Bagi hasil sekarang OTOMATIS diproses begitu penjualan disimpan
+  -- (app/actions/sales.ts) — di seed ini disimulasikan dengan memanggil
+  -- process_profit_sharing tepat setelah insert car_sales.
   perform process_profit_sharing(v_sale, date '2026-04-10');
   -- Andi: saldo 200jt -120jt +120jt(modal kembali) +7,5jt(bagi hasil 30%) = 207.500.000
 
+  -- Contoh dana SUDAH DICAIRKAN ke investor (demo tab "Riwayat Pencairan")
+  perform proses_pencairan_dana(
+    (select id from profit_sharing_details where profit_sharing_id =
+      (select id from profit_sharings where car_sale_id = v_sale) and investor_id = v_andi),
+    date '2026-04-12'
+  );
+  -- Andi: saldo 207.500.000 - 7.500.000(dicairkan) = 200.000.000 (kembali ke modal awal)
+
   -- =========================================================
-  -- UNIT 2 — Mitsubishi Xpander 2022 : TERJUAL, belum bagi hasil
+  -- UNIT 2 — Mitsubishi Xpander 2022 : SELESAI, bagi hasil OTOMATIS
+  -- tapi dana BELUM dicairkan (demo tab "Menunggu Dicairkan")
   -- URUN DANA: Budi + Rina (sama-sama golongan >500jt, nisbah 50%)
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status, catatan)
@@ -214,9 +226,13 @@ begin
     '66666666-0000-4000-8000-000000000002','55555555-0000-4000-8000-000000000002',
     date '2026-07-05', 230000000, 2500000, 1500000,
     v_hpp, 230000000 - v_hpp, 230000000 - v_hpp - 2500000 - 1500000, 'KREDIT'
-  );
+  ) returning id into v_sale;
   update cars set status = 'TERJUAL' where id = v_car;
-  -- Belum diproses bagi hasil -> "Laba Ditahan Pending" di laporan
+
+  perform process_profit_sharing(v_sale, date '2026-07-05');
+  -- Budi & Rina masing-masing dapat modal_kembali 102.500.000 + bagi hasil
+  -- 50% dari laba_bersih 18jt = 9jt -> total_kembali 111.500.000 masing-masing.
+  -- Dana bagi hasilnya sengaja BELUM dicairkan (contoh "Menunggu Dicairkan").
 
   -- =========================================================
   -- UNIT 3 — Honda Brio 2020 : READY_STOCK

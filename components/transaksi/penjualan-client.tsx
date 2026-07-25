@@ -140,12 +140,10 @@ export function PenjualanClient({
                   label: 'Batalkan Penjualan',
                   icon: Ban,
                   tone: 'danger',
-                  disabled: row.original.is_profit_shared,
-                  alasan: 'Bagi hasil sudah diproses',
                   onSelect: () =>
                     confirm({
                       title: 'Batalkan penjualan ini?',
-                      description: `Transaksi ${row.original.no_transaksi} akan dihapus dan unit ${row.original.unit} kembali ke Ready Stock.`,
+                      description: `Transaksi ${row.original.no_transaksi} akan dihapus, bagi hasil yang sudah diproses ikut dibalikkan, dan unit ${row.original.unit} kembali ke Ready Stock. Kalau ada dana yang sudah dicairkan ke investor, pembatalan akan ditolak — perlu rekonsiliasi manual.`,
                       confirmLabel: 'Ya, batalkan',
                       successMessage: 'Penjualan dibatalkan',
                       onConfirm: async () => {
@@ -296,7 +294,7 @@ function PenjualanFormDialog({
         title="Penjualan Baru"
         description="Panel kalkulasi di bawah ikut berubah saat Anda mengetik."
         submitLabel="Simpan Penjualan"
-        successMessage="Penjualan tersimpan. Lanjutkan ke Bagi Hasil untuk mengembalikan modal investor."
+        successMessage="Penjualan tersimpan, modal & bagi hasil investor sudah diproses otomatis."
         disabled={!carId || hargaJual <= 0}
         onSubmit={() =>
           buatPenjualan({
@@ -521,7 +519,8 @@ function PanelKalkulasi({
       </div>
 
       <p className="mt-3 text-label text-ink-muted">
-        Saldo investor belum berubah sampai bagi hasil diproses.
+        Begitu disimpan, modal & bagi hasil investor langsung diproses otomatis — saldo langsung
+        berubah.
       </p>
     </div>
   )

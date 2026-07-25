@@ -61,7 +61,7 @@ export const NAV_BACKOFFICE: NavGroup[] = [
       { label: 'Perbaikan', href: '/transaksi/perbaikan', icon: Wrench },
       { label: 'Stock', href: '/transaksi/stock', icon: PackageCheck },
       { label: 'Penjualan', href: '/transaksi/penjualan', icon: Receipt },
-      { label: 'Bagi Hasil', href: '/transaksi/bagi-hasil', icon: Banknote },
+      { label: 'Pencairan Dana', href: '/transaksi/pencairan', icon: Banknote },
       { label: 'Biaya Operasional', href: '/transaksi/biaya', icon: Wallet },
       { label: 'Aset Perusahaan', href: '/transaksi/aset', icon: Boxes },
     ],
