@@ -9,9 +9,9 @@
 -- Model bisnis yang dipakai (per keputusan 2026-07-25):
 -- - Golongan investasi berbasis rentang nilai setoran: 0-200jt (30%),
 --   200-500jt (40%), >500jt (50%).
--- - Default pembelian: 1 unit dibiayai 1 investor. Urun dana (multi-
---   investor) hanya untuk investor dengan nisbah SAMA PERSIS — dicontohkan
---   di Unit 2 (Xpander, dibiayai Budi + Rina, sama-sama golongan >500jt).
+-- - Setiap unit di seed ini SENGAJA dibiayai 1 investor saja (biar gampang
+--   dicek). Fitur "Urun Dana" (multi-investor dengan nisbah sama) tetap
+--   ada di aplikasi, cuma tidak dipakai di data simulasi ini.
 -- - Biaya perbaikan & komisi sales SELALU menambah HPP/mengurangi laba
 --   sebelum bagi hasil — otomatis tertanggung proporsional oleh investor
 --   & pengelola lewat nisbah, BUKAN ditanggung pengelola sendirian. Yang
@@ -40,7 +40,6 @@ insert into investment_tiers (id, nama_golongan, nilai_investasi, nisbah_investo
 -- ---------------------------------------------------------------------
 -- Investor
 -- Andi -> golongan 0-200jt | Siti -> 200-500jt | Budi & Rina -> >500jt
--- (Budi & Rina sengaja satu golongan supaya bisa urun dana bersama)
 -- ---------------------------------------------------------------------
 insert into investors (id, nama, alamat, no_tlp, email, nama_bank, no_rekening, atas_nama_rekening) values
   ('22222222-0000-4000-8000-000000000001', 'Budi Santoso',  'Jl. Melati No. 12, Bandung',    '081234567801', 'budi@example.com',  'BCA',     '1234567801', 'Budi Santoso'),
@@ -120,10 +119,8 @@ end $$;
 -- ---------------------------------------------------------------------
 -- Unit mobil + pembelian + alokasi modal + perbaikan + penjualan
 --
--- Default: 1 unit = 1 investor (alokasi ditulis manual, bukan proporsional
--- ke semua investor) — mencerminkan mekanisme "Urun Dana" yang sekarang
--- default-nya pilih 1 investor utama. Unit 2 sengaja dicontohkan urun
--- dana oleh 2 investor bernisbah sama (Budi & Rina, golongan >500jt).
+-- Setiap unit = 1 investor (memakai mekanisme "Urun Dana" dengan hanya
+-- memilih 1 investor utama, tanpa investor tambahan).
 -- ---------------------------------------------------------------------
 do $$
 declare
@@ -195,10 +192,10 @@ begin
   -- =========================================================
   -- UNIT 2 — Mitsubishi Xpander 2022 : SELESAI, bagi hasil OTOMATIS
   -- tapi dana BELUM dicairkan (demo tab "Menunggu Dicairkan")
-  -- URUN DANA: Budi + Rina (sama-sama golongan >500jt, nisbah 50%)
+  -- Dibiayai Budi sendirian (golongan >500jt, nisbah 50%)
   -- =========================================================
-  insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status, catatan)
-  values ('Mitsubishi','Xpander Ultimate',2022,'Putih','B 8899 KLM','MMBJ1KA5NHK008899','4A91008899','MATIC',31000, date '2027-05-20','DIBELI', 'Contoh urun dana: Budi + Rina, nisbah sama 50%')
+  insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status)
+  values ('Mitsubishi','Xpander Ultimate',2022,'Putih','B 8899 KLM','MMBJ1KA5NHK008899','4A91008899','MATIC',31000, date '2027-05-20','DIBELI')
   returning id into v_car;
 
   insert into purchases (no_transaksi, car_id, supplier_id, tanggal_beli, harga_beli, biaya_lain, rincian_biaya_lain)
@@ -206,12 +203,9 @@ begin
           200000000, 5000000, '[{"nama":"Komisi mediator","nominal":5000000}]'::jsonb)
   returning id into v_purchase;
 
-  perform allocate_purchase_funding(v_purchase, jsonb_build_array(
-    jsonb_build_object('investor_id', v_budi, 'amount', 102500000),
-    jsonb_build_object('investor_id', v_rina, 'amount', 102500000)
-  ));
-  -- Budi: 1.000.000.000 - 102.500.000 = 897.500.000
-  -- Rina: 1.000.000.000 - 102.500.000 = 897.500.000
+  perform allocate_purchase_funding(v_purchase,
+    jsonb_build_array(jsonb_build_object('investor_id', v_budi, 'amount', 205000000)));
+  -- Budi: 1.000.000.000 - 205.000.000 = 795.000.000
 
   insert into repairs (car_id, vendor_id, jenis_perbaikan, deskripsi, biaya, tanggal_masuk, tanggal_selesai, status)
   values (v_car, '44444444-0000-4000-8000-000000000002','Salon','Detailing full & coating', 3000000, date '2026-03-08', date '2026-03-11','SELESAI');
@@ -230,9 +224,10 @@ begin
   update cars set status = 'TERJUAL' where id = v_car;
 
   perform process_profit_sharing(v_sale, date '2026-07-05');
-  -- Budi & Rina masing-masing dapat modal_kembali 102.500.000 + bagi hasil
-  -- 50% dari laba_bersih 18jt = 9jt -> total_kembali 111.500.000 masing-masing.
-  -- Dana bagi hasilnya sengaja BELUM dicairkan (contoh "Menunggu Dicairkan").
+  -- Budi dapat modal_kembali 205.000.000 + bagi hasil 50% dari laba_bersih
+  -- 18jt = 9jt -> saldo sementara 795.000.000 + 205.000.000 + 9.000.000 =
+  -- 1.009.000.000. Dana bagi hasilnya sengaja BELUM dicairkan (contoh
+  -- "Menunggu Dicairkan").
 
   -- =========================================================
   -- UNIT 3 — Honda Brio 2020 : READY_STOCK
@@ -297,7 +292,7 @@ begin
 
   perform allocate_purchase_funding(v_purchase,
     jsonb_build_array(jsonb_build_object('investor_id', v_rina, 'amount', 133000000)));
-  -- Rina: 897.500.000 - 133.000.000 = 764.500.000
+  -- Rina: 1.000.000.000 - 133.000.000 = 867.000.000
 end $$;
 
 -- ---------------------------------------------------------------------
