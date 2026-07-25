@@ -111,6 +111,22 @@ export const USER_ROLE_LABEL: Record<UserRole, string> = {
 
 export const KATEGORI_OPEX = ['Gaji', 'Sewa', 'Listrik', 'Marketing', 'Lainnya'] as const
 
+export const KATEGORI_ASET = [
+  'Peralatan Kantor',
+  'Kendaraan Operasional',
+  'Elektronik',
+  'Furnitur',
+  'Lainnya',
+] as const
+
+export const ASSET_STATUS = ['AKTIF', 'DIJUAL', 'DIHAPUS'] as const
+export type AssetStatus = (typeof ASSET_STATUS)[number]
+export const ASSET_STATUS_LABEL: Record<AssetStatus, string> = {
+  AKTIF: 'Aktif',
+  DIJUAL: 'Dijual',
+  DIHAPUS: 'Dihapus',
+}
+
 /** Warna seri chart — samakan dengan --accent di app/globals.css (brand blue #006ead). */
 export const CHART_COLORS = {
   accent: '#006ead',

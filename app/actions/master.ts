@@ -13,6 +13,7 @@ import {
   vendorSchema,
   penarikanSchema,
   opexSchema,
+  asetSchema,
   penggunaSchema,
   pengaturanSchema,
 } from '@/lib/validations'
@@ -215,10 +216,27 @@ export async function hapusVendor(id: string) {
 /* ------------------------- Biaya operasional ------------------------- */
 
 export async function simpanOpex(input: unknown) {
-  return simpan('operational_expenses', opexSchema, input, ['/laporan/laba-rugi', '/dashboard'])
+  return simpan('operational_expenses', opexSchema, input, [
+    '/laporan/laba-rugi',
+    '/laporan/neraca',
+    '/dashboard',
+  ])
 }
 export async function hapusOpex(id: string) {
-  return hapus('operational_expenses', id, ['/laporan/laba-rugi', '/dashboard'])
+  return hapus('operational_expenses', id, ['/laporan/laba-rugi', '/laporan/neraca', '/dashboard'])
+}
+
+/* -------------------------- Aset Perusahaan --------------------------- */
+/**
+ * Sengaja TIDAK memotong saldo investor — dicatat sebagai pengeluaran
+ * milik pengelola (sama seperti Biaya Operasional). Investor mendanai
+ * jual-beli mobil, bukan aset tetap kantor.
+ */
+export async function simpanAset(input: unknown) {
+  return simpan('company_assets', asetSchema, input, ['/transaksi/aset', '/laporan/neraca'])
+}
+export async function hapusAset(id: string) {
+  return hapus('company_assets', id, ['/transaksi/aset', '/laporan/neraca'])
 }
 
 /* ------------------------------ Pengguna ----------------------------- */

@@ -1,12 +1,14 @@
 import {
   BadgePercent,
   Banknote,
+  Boxes,
   Car,
   FileBarChart,
   Handshake,
   LayoutDashboard,
   PackageCheck,
   Receipt,
+  Scale,
   Settings,
   ShieldCheck,
   ShoppingCart,
@@ -61,11 +63,15 @@ export const NAV_BACKOFFICE: NavGroup[] = [
       { label: 'Penjualan', href: '/transaksi/penjualan', icon: Receipt },
       { label: 'Bagi Hasil', href: '/transaksi/bagi-hasil', icon: Banknote },
       { label: 'Biaya Operasional', href: '/transaksi/biaya', icon: Wallet },
+      { label: 'Aset Perusahaan', href: '/transaksi/aset', icon: Boxes },
     ],
   },
   {
     label: 'Laporan',
-    items: [{ label: 'Laba Rugi', href: '/laporan/laba-rugi', icon: FileBarChart }],
+    items: [
+      { label: 'Laba Rugi', href: '/laporan/laba-rugi', icon: FileBarChart },
+      { label: 'Neraca', href: '/laporan/neraca', icon: Scale },
+    ],
   },
   {
     label: 'Pengaturan',

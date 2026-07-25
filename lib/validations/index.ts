@@ -227,6 +227,22 @@ export const penarikanSchema = z.object({
 
 /* ------------------------- Biaya operasional ------------------------- */
 
+export const asetSchema = z.object({
+  id: z.string().uuid().optional(),
+  nama: wajib('Nama aset'),
+  kategori: wajib('Kategori'),
+  tanggal_beli: tanggal,
+  harga_beli: uang.refine((v) => v > 0, 'Harga beli wajib diisi'),
+  umur_manfaat_bulan: z.coerce
+    .number()
+    .int('Umur manfaat harus bilangan bulan bulat')
+    .min(1, 'Minimal 1 bulan')
+    .optional()
+    .nullable(),
+  nilai_residu: uang.default(0),
+  catatan: opsional,
+})
+
 export const opexSchema = z.object({
   id: z.string().uuid().optional(),
   tanggal: tanggal,
