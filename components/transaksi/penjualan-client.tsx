@@ -97,7 +97,7 @@ export function PenjualanClient({
         ),
       },
       { accessorKey: 'customer_nama', header: 'Customer' },
-      { accessorKey: 'sales_nama', header: 'Sales' },
+      { accessorKey: 'sales_nama', header: 'Salesman' },
       {
         accessorKey: 'harga_jual',
         header: 'Harga Jual',
@@ -351,7 +351,7 @@ function PenjualanFormDialog({
               />
             </Field>
 
-            <Field label="Sales" hint="Kosongkan kalau tanpa sales" htmlFor="jual-sales">
+            <Field label="Salesman" hint="Kosongkan kalau tanpa salesman" htmlFor="jual-sales">
               <SearchableSelect
                 id="jual-sales"
                 options={[
@@ -364,7 +364,7 @@ function PenjualanFormDialog({
                 ]}
                 value={salesId}
                 onChange={setSalesId}
-                placeholder="Pilih sales"
+                placeholder="Pilih salesman"
               />
             </Field>
 

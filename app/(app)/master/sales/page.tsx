@@ -5,7 +5,7 @@ import { getDaftarSales } from '@/lib/queries/master'
 import { canWrite } from '@/lib/dev-role'
 import { simpanSales, hapusSales } from '@/app/actions/master'
 
-export const metadata: Metadata = { title: 'Master Sales' }
+export const metadata: Metadata = { title: 'Master Salesman' }
 
 export default async function SalesPage() {
   const { data, error } = await getDaftarSales()
@@ -14,14 +14,14 @@ export default async function SalesPage() {
   return (
     <>
       <PageHeader
-        title="Sales"
+        title="Salesman"
         description="Tim penjualan beserta komisi standarnya."
-        breadcrumb={[{ label: 'Master' }, { label: 'Sales' }]}
+        breadcrumb={[{ label: 'Master' }, { label: 'Salesman' }]}
       />
 
       <MasterCrud
-        entitas="Sales"
-        exportName="sales"
+        entitas="Salesman"
+        exportName="salesman"
         rows={data}
         error={error}
         canWrite={bolehTulis}
@@ -36,7 +36,7 @@ export default async function SalesPage() {
           { key: 'is_active', header: 'Status', kind: 'aktif', align: 'center' },
         ]}
         fields={[
-          { name: 'nama', label: 'Nama Sales', kind: 'text', required: true },
+          { name: 'nama', label: 'Nama Salesman', kind: 'text', required: true },
           { name: 'no_tlp', label: 'No. Telepon', kind: 'tel', placeholder: '08xxxxxxxxxx' },
           { name: 'alamat', label: 'Alamat', kind: 'text', fullWidth: true },
           {
@@ -45,12 +45,12 @@ export default async function SalesPage() {
             kind: 'money',
             hint: 'Terisi otomatis saat input penjualan, tetap bisa diubah per transaksi',
           },
-          { name: 'is_active', label: 'Sales aktif', kind: 'switch', fullWidth: true },
+          { name: 'is_active', label: 'Salesman aktif', kind: 'switch', fullWidth: true },
         ]}
         simpanAction={simpanSales}
         hapusAction={hapusSales}
-        emptyTitle="Belum ada sales"
-        emptyDescription="Tambahkan sales supaya komisi bisa dihitung otomatis saat unit terjual."
+        emptyTitle="Belum ada salesman"
+        emptyDescription="Tambahkan salesman supaya komisi bisa dihitung otomatis saat unit terjual."
       />
     </>
   )

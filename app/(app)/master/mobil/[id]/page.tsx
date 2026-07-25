@@ -131,7 +131,7 @@ export default async function DetailMobilPage({ params }: { params: { id: string
               </div>
               <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-3">
                 <Info label="Customer" value={data.sale.customers?.nama ?? '-'} />
-                <Info label="Sales" value={data.sale.sales_persons?.nama ?? 'Tanpa sales'} />
+                <Info label="Salesman" value={data.sale.sales_persons?.nama ?? 'Tanpa salesman'} />
                 <Info
                   label="Metode bayar"
                   value={PAYMENT_METHOD_LABEL[data.sale.metode_bayar as keyof typeof PAYMENT_METHOD_LABEL]}
