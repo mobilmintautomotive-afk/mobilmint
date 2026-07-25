@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import type { ColumnDef } from '@tanstack/react-table'
-import { AlertTriangle, CarFront, Plus, ShoppingCart, Users } from 'lucide-react'
+import { CarFront, Plus, ShoppingCart } from 'lucide-react'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
@@ -11,16 +11,16 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { FormDialog, FormGrid } from '@/components/forms/form-dialog'
 import { RincianBiayaRows } from '@/components/forms/rincian-biaya'
 import { MobilFormDialog } from '@/components/master/mobil-form'
-import { AlokasiPanel, type BarisAlokasi } from './alokasi-panel'
+import { UrunDanaPanel, type BarisPendana } from './urun-dana-panel'
 import { Button } from '@/components/ui/button'
 import { Field, Input, MoneyInput, Textarea } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/ui/select'
-import { Switch } from '@/components/ui/primitives'
 import { buatPembelian } from '@/app/actions/purchases'
-import { formatRupiah, formatTanggal, todayJakarta } from '@/lib/format'
+import { formatTanggal, todayJakarta } from '@/lib/format'
 import { totalRincian, validasiAlokasi } from '@/lib/calc'
 import { SUPPLIER_TYPE_LABEL } from '@/lib/constants'
-import type { InvestorBalance, RincianBiaya } from '@/types/database'
+import type { InvestorPendanaan } from '@/lib/queries/master'
+import type { RincianBiaya } from '@/types/database'
 
 type Pembelian = {
   id: string
@@ -57,7 +57,7 @@ export function PembelianClient({
   canWrite: boolean
   unitTersedia: UnitOption[]
   suppliers: { id: string; nama: string; tipe_supplier: string }[]
-  saldoInvestor: InvestorBalance[]
+  saldoInvestor: InvestorPendanaan[]
 }) {
   const [open, setOpen] = React.useState(false)
 
@@ -188,7 +188,7 @@ function PembelianFormDialog({
   onOpenChange: (v: boolean) => void
   unitTersedia: UnitOption[]
   suppliers: { id: string; nama: string; tipe_supplier: string }[]
-  saldoInvestor: InvestorBalance[]
+  saldoInvestor: InvestorPendanaan[]
 }) {
   const [carId, setCarId] = React.useState('')
   const [supplierId, setSupplierId] = React.useState('')
@@ -196,24 +196,16 @@ function PembelianFormDialog({
   const [hargaBeli, setHargaBeli] = React.useState(0)
   const [biaya, setBiaya] = React.useState<RincianBiaya[]>([])
   const [catatan, setCatatan] = React.useState('')
-  const [alokasi, setAlokasi] = React.useState<BarisAlokasi[]>([])
-  const [manual, setManual] = React.useState(false)
   const [openUnitBaru, setOpenUnitBaru] = React.useState(false)
 
-  // Default: 1 mobil dibiayai 1 investor. "Urun Dana" dinyalakan hanya kalau
-  // saldo investor tunggal tidak cukup, baru pindah ke alokasi proporsional
-  // multi-investor (AlokasiPanel) yang sudah ada.
-  const [urunDana, setUrunDana] = React.useState(false)
-  const [investorTunggalId, setInvestorTunggalId] = React.useState('')
+  // Mekanisme urun dana: investor utama dulu (rows[0]), baru bisa tambah
+  // investor lain — dibatasi ke yang nisbahnya sama persis (lihat UrunDanaPanel).
+  const [pendana, setPendana] = React.useState<BarisPendana[]>([])
 
   const totalModal = Math.round(hargaBeli) + totalRincian(biaya)
-
-  const investorTunggal = saldoInvestor.find((i) => i.investor_id === investorTunggalId)
-  const saldoTunggalCukup = investorTunggal ? investorTunggal.saldo >= totalModal : false
-
-  const validasiPooling = validasiAlokasi(totalModal, alokasi)
-  const totalSaldoPooling = saldoInvestor.reduce((s, i) => s + i.saldo, 0)
-  const cukupPooling = totalSaldoPooling >= totalModal
+  const validasi = validasiAlokasi(totalModal, pendana)
+  const totalSaldoPendana = pendana.reduce((s, r) => s + r.saldo, 0)
+  const cukup = totalSaldoPendana >= totalModal
 
   React.useEffect(() => {
     if (!open) return
@@ -223,18 +215,11 @@ function PembelianFormDialog({
     setHargaBeli(0)
     setBiaya([])
     setCatatan('')
-    setManual(false)
-    setAlokasi([])
-    setUrunDana(false)
-    setInvestorTunggalId('')
+    setPendana([])
   }, [open])
 
   const bisaSimpan =
-    Boolean(carId) &&
-    totalModal > 0 &&
-    (urunDana
-      ? cukupPooling && validasiPooling.valid
-      : Boolean(investorTunggalId) && saldoTunggalCukup)
+    Boolean(carId) && totalModal > 0 && pendana.length > 0 && cukup && validasi.valid
 
   return (
     <>
@@ -255,11 +240,9 @@ function PembelianFormDialog({
             harga_beli: hargaBeli,
             rincian_biaya_lain: biaya.filter((b) => b.nama && b.nominal > 0),
             catatan,
-            alokasi: urunDana
-              ? alokasi
-                  .filter((a) => a.amount > 0)
-                  .map((a) => ({ investor_id: a.investor_id, amount: a.amount }))
-              : [{ investor_id: investorTunggalId, amount: totalModal }],
+            alokasi: pendana
+              .filter((p) => p.amount > 0)
+              .map((p) => ({ investor_id: p.investor_id, amount: p.amount })),
           })
         }
       >
@@ -337,87 +320,12 @@ function PembelianFormDialog({
             </span>
           </div>
 
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-line px-4 py-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-[10px] bg-accent-soft text-accent">
-                <Users className="size-4" />
-              </span>
-              <div>
-                <p className="text-label font-medium text-ink">Urun Dana</p>
-                <p className="text-label text-ink-muted">
-                  Aktifkan kalau saldo satu investor tidak cukup membiayai unit ini sendirian —
-                  modal akan dibagi proporsional ke beberapa investor.
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={urunDana}
-              onCheckedChange={(v) => {
-                setUrunDana(v)
-                if (v) {
-                  setInvestorTunggalId('')
-                } else {
-                  setAlokasi([])
-                  setManual(false)
-                }
-              }}
-            />
-          </div>
-
-          {!urunDana ? (
-            <div className="space-y-3 rounded-lg border border-line bg-surface-alt p-4">
-              <div>
-                <h4 className="text-card-title text-ink">Investor Pendana</h4>
-                <p className="text-label text-ink-muted">
-                  Modal unit ini diambil penuh dari satu investor.
-                </p>
-              </div>
-
-              <Field label="Pilih Investor" required htmlFor="investor-tunggal">
-                <SearchableSelect
-                  id="investor-tunggal"
-                  options={saldoInvestor
-                    .filter((i) => i.saldo > 0)
-                    .map((i) => ({
-                      value: i.investor_id,
-                      label: i.nama,
-                      keterangan: `Saldo tersedia: ${formatRupiah(i.saldo)}`,
-                    }))}
-                  value={investorTunggalId}
-                  onChange={setInvestorTunggalId}
-                  placeholder="Pilih investor pendana"
-                  searchPlaceholder="Cari nama investor..."
-                  emptyText="Tidak ada investor dengan saldo tersedia"
-                />
-              </Field>
-
-              {investorTunggal ? (
-                <div className="rounded-[10px] bg-surface p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-label text-ink-muted">Saldo tersedia</span>
-                    <Money value={investorTunggal.saldo} className="font-medium" />
-                  </div>
-                  {totalModal > 0 && !saldoTunggalCukup ? (
-                    <p className="mt-2 flex items-start gap-2 text-label text-danger">
-                      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                      Saldo investor ini kurang {formatRupiah(totalModal - investorTunggal.saldo)}{' '}
-                      untuk menutupi modal unit ini. Nyalakan Urun Dana untuk gabung dengan
-                      investor lain.
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <AlokasiPanel
-              totalModal={totalModal}
-              saldoInvestor={saldoInvestor}
-              rows={alokasi}
-              onChange={setAlokasi}
-              manual={manual}
-              onManualChange={setManual}
-            />
-          )}
+          <UrunDanaPanel
+            totalModal={totalModal}
+            daftarInvestor={saldoInvestor}
+            rows={pendana}
+            onChange={setPendana}
+          />
 
           <Field label="Catatan" htmlFor="catatan-beli">
             <Textarea

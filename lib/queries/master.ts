@@ -153,17 +153,39 @@ export async function getDaftarInvestor() {
   }, [])
 }
 
-/** Investor + saldo, dipakai dropdown & panel alokasi modal. */
+/** Investor + saldo + nisbah aktif, dipakai dropdown & panel Sumber Dana pembelian. */
+export type InvestorPendanaan = InvestorBalance & {
+  nisbah_investor_pct: number | null
+  golongan: string | null
+}
+
 export async function getSaldoInvestor() {
-  return aman<InvestorBalance[]>(async (db) => {
-    const [bal, inv] = await Promise.all([
+  return aman<InvestorPendanaan[]>(async (db) => {
+    const [bal, inv, kontrak] = await Promise.all([
       db.from('v_investor_balance').select('*'),
       db.from('investors').select('id, is_active'),
+      db
+        .from('investor_contracts')
+        .select('investor_id, nisbah_investor_pct, tanggal_akad, investment_tiers(nama_golongan)')
+        .eq('status', 'AKTIF')
+        .order('tanggal_akad', { ascending: false }),
     ])
     if (bal.error) throw new Error(bal.error.message)
     const aktif = new Set(
       ((inv.data ?? []) as any[]).filter((i) => i.is_active).map((i) => i.id as string),
     )
+
+    // Akad aktif terbaru per investor — nisbah yang dipakai server saat
+    // allocate_purchase_funding menyimpan snapshot (lihat migration 000200).
+    const nisbahMap = new Map<string, number>()
+    const golonganMap = new Map<string, string>()
+    for (const k of (kontrak.data ?? []) as any[]) {
+      if (!nisbahMap.has(k.investor_id)) {
+        nisbahMap.set(k.investor_id, num(k.nisbah_investor_pct))
+        golonganMap.set(k.investor_id, k.investment_tiers?.nama_golongan ?? '-')
+      }
+    }
+
     return ((bal.data ?? []) as any[])
       .filter((b) => aktif.has(b.investor_id))
       .map((b) => ({
@@ -174,6 +196,8 @@ export async function getSaldoInvestor() {
         total_bagi_hasil: num(b.total_bagi_hasil),
         modal_berjalan: num(b.modal_berjalan),
         total_penarikan: num(b.total_penarikan),
+        nisbah_investor_pct: nisbahMap.get(b.investor_id) ?? null,
+        golongan: golonganMap.get(b.investor_id) ?? null,
       }))
       .sort((a, z) => z.saldo - a.saldo)
   }, [])
