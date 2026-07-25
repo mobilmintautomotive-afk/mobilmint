@@ -3,8 +3,20 @@
 -- JANGAN dijalankan di produksi (lihat PRD Fase 5 bagian 5.1 no.6).
 --
 -- Seluruh angka keuangan di bawah dihitung oleh function database
--- (fn_preview_allocation / allocate_purchase_funding / process_profit_sharing)
--- supaya seed selalu konsisten dengan logika aplikasi.
+-- (allocate_purchase_funding / process_profit_sharing) supaya seed
+-- selalu konsisten dengan logika aplikasi.
+--
+-- Model bisnis yang dipakai (per keputusan 2026-07-25):
+-- - Golongan investasi berbasis rentang nilai setoran: 0-200jt (30%),
+--   200-500jt (40%), >500jt (50%).
+-- - Default pembelian: 1 unit dibiayai 1 investor. Urun dana (multi-
+--   investor) hanya untuk investor dengan nisbah SAMA PERSIS — dicontohkan
+--   di Unit 2 (Xpander, dibiayai Budi + Rina, sama-sama golongan >500jt).
+-- - Biaya perbaikan & komisi sales SELALU menambah HPP/mengurangi laba
+--   sebelum bagi hasil — otomatis tertanggung proporsional oleh investor
+--   & pengelola lewat nisbah, BUKAN ditanggung pengelola sendirian. Yang
+--   ditanggung pengelola murni cuma operasional dealer (gaji, sewa,
+--   listrik) — lihat operational_expenses di bagian bawah.
 -- =====================================================================
 
 begin;
@@ -14,19 +26,21 @@ truncate table
   profit_sharing_details, profit_sharings, car_sales, repairs, car_fundings,
   purchases, investor_ledger, investor_contracts, cars, customers,
   sales_persons, vendors, suppliers, investment_tiers, profiles, investors,
-  operational_expenses
+  operational_expenses, company_assets
 restart identity cascade;
 
 -- ---------------------------------------------------------------------
--- Golongan Investasi
+-- Golongan Investasi — berbasis rentang nilai setoran
 -- ---------------------------------------------------------------------
 insert into investment_tiers (id, nama_golongan, nilai_investasi, nisbah_investor_pct, nisbah_pengelola_pct, tenor_bulan, deskripsi) values
-  ('11111111-0000-4000-8000-000000000001', 'Silver',   50000000,  60, 40, 12, 'Paket pemula, tenor 12 bulan'),
-  ('11111111-0000-4000-8000-000000000002', 'Gold',     100000000, 65, 35, 12, 'Paket menengah, nisbah lebih besar'),
-  ('11111111-0000-4000-8000-000000000003', 'Platinum', 250000000, 70, 30, 24, 'Paket premium, tenor 24 bulan');
+  ('11111111-0000-4000-8000-000000000001', '0 - 200 Juta',   200000000,  30, 70, 12, 'Setoran sampai dengan Rp 200 juta'),
+  ('11111111-0000-4000-8000-000000000002', '200 - 500 Juta', 500000000,  40, 60, 12, 'Setoran Rp 200 - 500 juta'),
+  ('11111111-0000-4000-8000-000000000003', '> 500 Juta',     1000000000, 50, 50, 24, 'Setoran di atas Rp 500 juta');
 
 -- ---------------------------------------------------------------------
 -- Investor
+-- Andi -> golongan 0-200jt | Siti -> 200-500jt | Budi & Rina -> >500jt
+-- (Budi & Rina sengaja satu golongan supaya bisa urun dana bersama)
 -- ---------------------------------------------------------------------
 insert into investors (id, nama, alamat, no_tlp, email, nama_bank, no_rekening, atas_nama_rekening) values
   ('22222222-0000-4000-8000-000000000001', 'Budi Santoso',  'Jl. Melati No. 12, Bandung',    '081234567801', 'budi@example.com',  'BCA',     '1234567801', 'Budi Santoso'),
@@ -74,10 +88,10 @@ declare
 begin
   for r in
     select * from (values
-      ('22222222-0000-4000-8000-000000000001'::uuid, '11111111-0000-4000-8000-000000000003'::uuid, date '2026-01-10'),
-      ('22222222-0000-4000-8000-000000000002'::uuid, '11111111-0000-4000-8000-000000000002'::uuid, date '2026-01-15'),
-      ('22222222-0000-4000-8000-000000000003'::uuid, '11111111-0000-4000-8000-000000000001'::uuid, date '2026-01-20'),
-      ('22222222-0000-4000-8000-000000000004'::uuid, '11111111-0000-4000-8000-000000000003'::uuid, date '2026-02-02')
+      ('22222222-0000-4000-8000-000000000003'::uuid, '11111111-0000-4000-8000-000000000001'::uuid, date '2026-01-10'), -- Andi, 0-200jt
+      ('22222222-0000-4000-8000-000000000002'::uuid, '11111111-0000-4000-8000-000000000002'::uuid, date '2026-01-15'), -- Siti, 200-500jt
+      ('22222222-0000-4000-8000-000000000001'::uuid, '11111111-0000-4000-8000-000000000003'::uuid, date '2026-01-20'), -- Budi, >500jt
+      ('22222222-0000-4000-8000-000000000004'::uuid, '11111111-0000-4000-8000-000000000003'::uuid, date '2026-02-02')  -- Rina, >500jt
     ) as t(investor_id, tier_id, tanggal)
   loop
     v_no := fn_next_doc_number('AKD', r.tanggal);
@@ -105,18 +119,28 @@ end $$;
 
 -- ---------------------------------------------------------------------
 -- Unit mobil + pembelian + alokasi modal + perbaikan + penjualan
+--
+-- Default: 1 unit = 1 investor (alokasi ditulis manual, bukan proporsional
+-- ke semua investor) — mencerminkan mekanisme "Urun Dana" yang sekarang
+-- default-nya pilih 1 investor utama. Unit 2 sengaja dicontohkan urun
+-- dana oleh 2 investor bernisbah sama (Budi & Rina, golongan >500jt).
 -- ---------------------------------------------------------------------
 do $$
 declare
+  v_andi  uuid := '22222222-0000-4000-8000-000000000003';
+  v_siti  uuid := '22222222-0000-4000-8000-000000000002';
+  v_budi  uuid := '22222222-0000-4000-8000-000000000001';
+  v_rina  uuid := '22222222-0000-4000-8000-000000000004';
+
   v_car uuid;
   v_purchase uuid;
   v_sale uuid;
-  v_alloc jsonb;
   v_hpp numeric;
   v_repair uuid;
 begin
   -- =========================================================
   -- UNIT 1 — Toyota Avanza 2019 : siklus penuh sampai SELESAI
+  -- Dibiayai Andi sendirian (golongan 0-200jt, nisbah 30%)
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status, catatan)
   values ('Toyota','Avanza G',2019,'Silver','B 1234 XYZ','MHKM1BA3JKJ001234','1NRF012345','MANUAL',68000, date '2027-03-14','DIBELI','Unit pertama, kondisi mesin sehat')
@@ -129,10 +153,12 @@ begin
           'Beli dari lelang JBA batch Februari')
   returning id into v_purchase;
 
-  select jsonb_agg(jsonb_build_object('investor_id', a.investor_id, 'amount', a.amount))
-    into v_alloc from fn_preview_allocation(120000000) a;
-  perform allocate_purchase_funding(v_purchase, v_alloc);
+  perform allocate_purchase_funding(v_purchase,
+    jsonb_build_array(jsonb_build_object('investor_id', v_andi, 'amount', 120000000)));
 
+  -- Biaya perbaikan menambah HPP, otomatis mengurangi laba yang dibagi
+  -- nanti (bukan ditanggung pengelola sendiri) — ambil_dari_modal=false
+  -- artinya tidak memotong saldo Andi sekarang juga, cukup nempel di HPP.
   insert into repairs (car_id, vendor_id, jenis_perbaikan, deskripsi, biaya, tanggal_masuk, tanggal_selesai, status)
   values (v_car, '44444444-0000-4000-8000-000000000001','Mesin','Ganti timing belt, tune up, ganti oli', 5000000, date '2026-02-16', date '2026-02-24','SELESAI'),
          (v_car, '44444444-0000-4000-8000-000000000002','Salon','Poles body & cuci interior', 2000000, date '2026-02-25', date '2026-02-27','SELESAI');
@@ -153,12 +179,14 @@ begin
   update cars set status = 'TERJUAL' where id = v_car;
 
   perform process_profit_sharing(v_sale, date '2026-04-10');
+  -- Andi: saldo 200jt -120jt +120jt(modal kembali) +7,5jt(bagi hasil 30%) = 207.500.000
 
   -- =========================================================
   -- UNIT 2 — Mitsubishi Xpander 2022 : TERJUAL, belum bagi hasil
+  -- URUN DANA: Budi + Rina (sama-sama golongan >500jt, nisbah 50%)
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status, catatan)
-  values ('Mitsubishi','Xpander Ultimate',2022,'Putih','B 8899 KLM','MMBJ1KA5NHK008899','4A91008899','MATIC',31000, date '2027-05-20','DIBELI', null)
+  values ('Mitsubishi','Xpander Ultimate',2022,'Putih','B 8899 KLM','MMBJ1KA5NHK008899','4A91008899','MATIC',31000, date '2027-05-20','DIBELI', 'Contoh urun dana: Budi + Rina, nisbah sama 50%')
   returning id into v_car;
 
   insert into purchases (no_transaksi, car_id, supplier_id, tanggal_beli, harga_beli, biaya_lain, rincian_biaya_lain)
@@ -166,9 +194,12 @@ begin
           200000000, 5000000, '[{"nama":"Komisi mediator","nominal":5000000}]'::jsonb)
   returning id into v_purchase;
 
-  select jsonb_agg(jsonb_build_object('investor_id', a.investor_id, 'amount', a.amount))
-    into v_alloc from fn_preview_allocation(205000000) a;
-  perform allocate_purchase_funding(v_purchase, v_alloc);
+  perform allocate_purchase_funding(v_purchase, jsonb_build_array(
+    jsonb_build_object('investor_id', v_budi, 'amount', 102500000),
+    jsonb_build_object('investor_id', v_rina, 'amount', 102500000)
+  ));
+  -- Budi: 1.000.000.000 - 102.500.000 = 897.500.000
+  -- Rina: 1.000.000.000 - 102.500.000 = 897.500.000
 
   insert into repairs (car_id, vendor_id, jenis_perbaikan, deskripsi, biaya, tanggal_masuk, tanggal_selesai, status)
   values (v_car, '44444444-0000-4000-8000-000000000002','Salon','Detailing full & coating', 3000000, date '2026-03-08', date '2026-03-11','SELESAI');
@@ -185,9 +216,12 @@ begin
     v_hpp, 230000000 - v_hpp, 230000000 - v_hpp - 2500000 - 1500000, 'KREDIT'
   );
   update cars set status = 'TERJUAL' where id = v_car;
+  -- Belum diproses bagi hasil -> "Laba Ditahan Pending" di laporan
 
   -- =========================================================
-  -- UNIT 3 — Honda Brio 2020 : READY_STOCK (umur stok > 60 hari)
+  -- UNIT 3 — Honda Brio 2020 : READY_STOCK
+  -- Dibiayai Siti sendirian (golongan 200-500jt, nisbah 40%)
+  -- Contoh "Ambil dari Modal Investor" saat perbaikan (checkbox PRD B3)
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status)
   values ('Honda','Brio RS',2020,'Merah','B 4321 QRS','MHRDD1830LJ004321','L12B004321','MATIC',45000, date '2027-01-09','DIBELI')
@@ -198,16 +232,21 @@ begin
           95000000, 2000000, '[{"nama":"Biaya lelang","nominal":2000000}]'::jsonb)
   returning id into v_purchase;
 
-  select jsonb_agg(jsonb_build_object('investor_id', a.investor_id, 'amount', a.amount))
-    into v_alloc from fn_preview_allocation(97000000) a;
-  perform allocate_purchase_funding(v_purchase, v_alloc);
+  perform allocate_purchase_funding(v_purchase,
+    jsonb_build_array(jsonb_build_object('investor_id', v_siti, 'amount', 97000000)));
+  -- Siti: 500.000.000 - 97.000.000 = 403.000.000
 
-  insert into repairs (car_id, vendor_id, jenis_perbaikan, deskripsi, biaya, tanggal_masuk, tanggal_selesai, status)
-  values (v_car, '44444444-0000-4000-8000-000000000001','Kaki-kaki','Ganti shockbreaker depan & spooring', 4000000, date '2026-03-12', date '2026-03-18','SELESAI');
+  insert into repairs (car_id, vendor_id, jenis_perbaikan, deskripsi, biaya, tanggal_masuk, tanggal_selesai, status, ambil_dari_modal)
+  values (v_car, '44444444-0000-4000-8000-000000000001','Kaki-kaki','Ganti shockbreaker depan & spooring', 4000000, date '2026-03-12', date '2026-03-18','SELESAI', true)
+  returning id into v_repair;
+  perform allocate_repair_funding(v_repair);
+  -- Siti: 403.000.000 - 4.000.000 = 399.000.000 (potongan modal langsung, contoh checkbox aktif)
+
   update cars set status = 'READY_STOCK' where id = v_car;
 
   -- =========================================================
   -- UNIT 4 — Daihatsu Xenia 2018 : PERBAIKAN (masih di bengkel)
+  -- Dibiayai Andi sendirian, pakai sisa saldonya
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status)
   values ('Daihatsu','Xenia R',2018,'Hitam','B 5566 TUV','MHKV5EA2JJK005566','3SZ005566','MANUAL',92000, date '2026-11-30','DIBELI')
@@ -215,12 +254,12 @@ begin
 
   insert into purchases (no_transaksi, car_id, supplier_id, tanggal_beli, harga_beli, biaya_lain, rincian_biaya_lain)
   values (fn_next_doc_number('BLI', date '2026-06-02'), v_car, '33333333-0000-4000-8000-000000000002', date '2026-06-02',
-          78000000, 1000000, '[{"nama":"Biaya derek","nominal":1000000}]'::jsonb)
+          60000000, 1000000, '[{"nama":"Biaya derek","nominal":1000000}]'::jsonb)
   returning id into v_purchase;
 
-  select jsonb_agg(jsonb_build_object('investor_id', a.investor_id, 'amount', a.amount))
-    into v_alloc from fn_preview_allocation(79000000) a;
-  perform allocate_purchase_funding(v_purchase, v_alloc);
+  perform allocate_purchase_funding(v_purchase,
+    jsonb_build_array(jsonb_build_object('investor_id', v_andi, 'amount', 61000000)));
+  -- Andi: 207.500.000 - 61.000.000 = 146.500.000
 
   insert into repairs (car_id, vendor_id, jenis_perbaikan, deskripsi, biaya, tanggal_masuk, status)
   values (v_car, '44444444-0000-4000-8000-000000000001','Body','Perbaikan bumper depan & cat ulang', 6000000, date '2026-07-10','PROSES')
@@ -229,6 +268,7 @@ begin
 
   -- =========================================================
   -- UNIT 5 — Suzuki Ertiga 2021 : baru DIBELI
+  -- Dibiayai Rina sendirian, pakai sisa saldonya
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status)
   values ('Suzuki','Ertiga GX',2021,'Abu-abu','B 7788 WXY','MHYKZE81SMJ007788','K15B007788','MATIC',52000, date '2027-02-18','DIBELI')
@@ -239,19 +279,31 @@ begin
           130000000, 3000000, '[{"nama":"Biaya lelang","nominal":2000000},{"nama":"Mutasi","nominal":1000000}]'::jsonb)
   returning id into v_purchase;
 
-  select jsonb_agg(jsonb_build_object('investor_id', a.investor_id, 'amount', a.amount))
-    into v_alloc from fn_preview_allocation(133000000) a;
-  perform allocate_purchase_funding(v_purchase, v_alloc);
+  perform allocate_purchase_funding(v_purchase,
+    jsonb_build_array(jsonb_build_object('investor_id', v_rina, 'amount', 133000000)));
+  -- Rina: 897.500.000 - 133.000.000 = 764.500.000
 end $$;
 
 -- ---------------------------------------------------------------------
--- Biaya operasional (dipakai di waterfall laba rugi)
+-- Aset Perusahaan — murni milik pengelola, tidak memotong saldo investor
+-- ---------------------------------------------------------------------
+insert into company_assets (nama, kategori, tanggal_beli, harga_beli, umur_manfaat_bulan, nilai_residu, catatan) values
+  ('Laptop Kasir', 'Elektronik', date '2026-05-04', 9000000, 24, 500000, 'Dipakai admin input transaksi harian'),
+  ('AC Showroom 2 PK', 'Peralatan Kantor', date '2026-06-15', 6000000, 60, 0, 'Ruang tunggu customer');
+
+-- ---------------------------------------------------------------------
+-- Biaya operasional — HANYA operasional dealer (gaji, sewa, listrik).
+-- Biaya per-unit (perbaikan, komisi sales) TIDAK masuk sini, lihat
+-- catatan di kepala file.
 -- ---------------------------------------------------------------------
 insert into operational_expenses (tanggal, kategori, keterangan, nominal) values
   (date '2026-02-28','Gaji','Gaji staf kantor Februari', 8000000),
   (date '2026-03-31','Gaji','Gaji staf kantor Maret', 8000000),
   (date '2026-04-30','Gaji','Gaji staf kantor April', 8000000),
-  (date '2026-04-05','Marketing','Iklan OLX & Facebook Ads', 2500000),
+  (date '2026-05-31','Gaji','Gaji staf kantor Mei', 8000000),
+  (date '2026-06-30','Gaji','Gaji staf kantor Juni', 8000000),
+  (date '2026-03-31','Sewa','Sewa showroom Maret', 6000000),
+  (date '2026-04-30','Sewa','Sewa showroom April', 6000000),
   (date '2026-05-31','Sewa','Sewa showroom Mei', 6000000),
   (date '2026-06-30','Sewa','Sewa showroom Juni', 6000000),
   (date '2026-07-05','Listrik','Listrik & internet Juli', 1500000);
