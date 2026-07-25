@@ -34,3 +34,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+.env*
+
+# kredensial yang sempat tercipta otomatis saat setup Supabase/Vercel CLI —
+# jangan pernah ikut ter-commit
+password-supabase.txt
