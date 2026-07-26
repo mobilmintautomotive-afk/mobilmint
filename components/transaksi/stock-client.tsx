@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState, ErrorState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
+import { StatusBadge } from '@/components/shared/status-badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -29,6 +30,14 @@ const RENTANG_UMUR = [
   { value: '60-99999', label: '> 60 hari' },
 ]
 
+/** Hanya status yang mungkin muncul di stok (unit terjual tidak ditarik). */
+const STATUS_STOK = [
+  { value: 'semua', label: 'Semua Status' },
+  { value: 'READY_STOCK', label: 'Siap Dijual' },
+  { value: 'PERBAIKAN', label: 'Proses Perbaikan' },
+  { value: 'DIBELI', label: 'Baru Dibeli' },
+]
+
 export function StockClient({
   rows,
   error,
@@ -45,6 +54,7 @@ export function StockClient({
   const [fMerek, setFMerek] = React.useState('semua')
   const [fHpp, setFHpp] = React.useState('semua')
   const [fUmur, setFUmur] = React.useState('semua')
+  const [fStatus, setFStatus] = React.useState('semua')
 
   const merekOptions = React.useMemo(
     () => Array.from(new Set(rows.map((r) => r.merek))).sort(),
@@ -53,6 +63,7 @@ export function StockClient({
 
   const data = React.useMemo(() => {
     return rows.filter((r) => {
+      if (fStatus !== 'semua' && r.status !== fStatus) return false
       if (fMerek !== 'semua' && r.merek !== fMerek) return false
       if (q && !`${r.merek} ${r.tipe} ${r.no_polisi ?? ''}`.toLowerCase().includes(q.toLowerCase()))
         return false
@@ -68,7 +79,7 @@ export function StockClient({
       }
       return true
     })
-  }, [rows, q, fMerek, fHpp, fUmur])
+  }, [rows, q, fMerek, fHpp, fUmur, fStatus])
 
   const columns = React.useMemo<ColumnDef<CarOverview, any>[]>(
     () => [
@@ -84,6 +95,11 @@ export function StockClient({
             <span className="block text-label text-ink-muted">{row.original.no_polisi ?? '-'}</span>
           </Link>
         ),
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ getValue }) => <StatusBadge status={getValue() as string} />,
       },
       {
         accessorKey: 'tanggal_beli',
@@ -121,7 +137,7 @@ export function StockClient({
         enableSorting: false,
         meta: { align: 'right' as const },
         cell: ({ row }) =>
-          canWrite ? (
+          canWrite && row.original.status === 'READY_STOCK' ? (
             <Button asChild size="sm" variant="accent">
               <Link href={`/transaksi/penjualan?unit=${row.original.id}`}>Jual Unit Ini</Link>
             </Button>
@@ -152,6 +168,19 @@ export function StockClient({
               className="pl-9"
             />
           </div>
+
+          <Select value={fStatus} onValueChange={setFStatus}>
+            <SelectTrigger className="sm:w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_STOK.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Select value={fMerek} onValueChange={setFMerek}>
             <SelectTrigger className="sm:w-[150px]">
@@ -222,18 +251,26 @@ export function StockClient({
 
       {data.length === 0 ? (
         <div className="mm-card">
-          <EmptyState
-            icon={PackageCheck}
-            title="Belum ada unit di stok"
-            description="Tambahkan pembelian pertama untuk mulai mengisi stok, lalu tandai unit siap jual setelah perbaikan selesai."
-            action={
-              canWrite ? (
-                <Button asChild>
-                  <Link href="/transaksi/pembelian">Ke halaman Pembelian</Link>
-                </Button>
-              ) : undefined
-            }
-          />
+          {rows.length === 0 ? (
+            <EmptyState
+              icon={PackageCheck}
+              title="Belum ada unit di stok"
+              description="Tambahkan pembelian pertama untuk mulai mengisi stok, lalu tandai unit siap jual setelah perbaikan selesai."
+              action={
+                canWrite ? (
+                  <Button asChild>
+                    <Link href="/transaksi/pembelian">Ke halaman Pembelian</Link>
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={Search}
+              title="Tidak ada unit yang cocok"
+              description="Coba longgarkan filter atau kata kuncinya."
+            />
+          )}
         </div>
       ) : mode === 'grid' ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -246,7 +283,7 @@ export function StockClient({
           columns={columns}
           data={data}
           searchKeys={['merek', 'tipe', 'no_polisi']}
-          exportName="ready-stock"
+          exportName="stock-unit"
         />
       )}
     </div>
@@ -283,11 +320,14 @@ function KartuStok({
 
       <div className="flex flex-1 flex-col gap-3 px-5 pb-5">
         <div>
-          <Link href={`/master/mobil/${car.id}`} className="hover:text-accent">
-            <h3 className="text-card-title text-ink">
-              {car.merek} {car.tipe} {car.tahun}
-            </h3>
-          </Link>
+          <div className="flex items-start justify-between gap-2">
+            <Link href={`/master/mobil/${car.id}`} className="hover:text-accent">
+              <h3 className="text-card-title text-ink">
+                {car.merek} {car.tipe} {car.tahun}
+              </h3>
+            </Link>
+            <StatusBadge status={car.status} />
+          </div>
           <p className="text-label text-ink-muted">
             {car.no_polisi ?? 'Tanpa no. polisi'} ·{' '}
             {TRANSMISI_LABEL[car.transmisi ?? ''] ?? 'Transmisi -'} ·{' '}
@@ -315,9 +355,15 @@ function KartuStok({
         ) : null}
 
         {canWrite ? (
-          <Button asChild variant="accent" className="mt-auto w-full">
-            <Link href={`/transaksi/penjualan?unit=${car.id}`}>Jual Unit Ini</Link>
-          </Button>
+          car.status === 'READY_STOCK' ? (
+            <Button asChild variant="accent" className="mt-auto w-full">
+              <Link href={`/transaksi/penjualan?unit=${car.id}`}>Jual Unit Ini</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="secondary" className="mt-auto w-full">
+              <Link href={`/master/mobil/${car.id}`}>Lihat Detail Unit</Link>
+            </Button>
+          )
         ) : null}
       </div>
     </div>

@@ -101,13 +101,22 @@ export async function getUnitBisaDiperbaiki() {
 
 /* -------------------------------- Stock ------------------------------ */
 
-export async function getReadyStock() {
+/**
+ * Semua unit yang masih jadi stok — bukan cuma yang siap dijual, tapi juga
+ * yang baru dibeli dan yang sedang diperbaiki, supaya seluruh barang yang
+ * modalnya masih tertanam bisa dipantau di satu halaman.
+ *
+ * Unit TERJUAL/SELESAI sengaja tidak ikut: modalnya sudah kembali, dan
+ * kalau dimasukkan, "nilai modal tertanam" dan "rata-rata umur stok" jadi
+ * salah. Riwayat unit terjual ada di Master Mobil & Penjualan.
+ */
+export async function getStockUnit() {
   return aman<CarOverview[]>(async (db) => {
     const rows = unwrap(
       await db
         .from('v_car_overview')
         .select('*')
-        .eq('status', 'READY_STOCK')
+        .in('status', ['DIBELI', 'PERBAIKAN', 'READY_STOCK'])
         .order('tanggal_beli', { ascending: true }),
     ) as any[]
     return rows.map((r) => ({
