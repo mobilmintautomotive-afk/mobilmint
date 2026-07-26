@@ -158,15 +158,16 @@ export async function getUnitSiapJual() {
   return aman(async (db) => {
     const [cars, fundings] = await Promise.all([
       db.from('v_car_overview').select('*').eq('status', 'READY_STOCK'),
-      db.from('car_fundings').select('car_id, amount, nisbah_investor_pct'),
+      db.from('car_fundings').select('car_id, amount, nisbah_investor_pct, investors(nama)'),
     ])
     if (cars.error) throw new Error(cars.error.message)
 
-    const perUnit = new Map<string, { total: number; bobot: number }>()
+    const perUnit = new Map<string, { total: number; bobot: number; nama: string[] }>()
     for (const f of ((fundings.data ?? []) as any[])) {
-      const cur = perUnit.get(f.car_id) ?? { total: 0, bobot: 0 }
+      const cur = perUnit.get(f.car_id) ?? { total: 0, bobot: 0, nama: [] }
       cur.total += num(f.amount)
       cur.bobot += num(f.amount) * num(f.nisbah_investor_pct)
+      if (f.investors?.nama) cur.nama.push(f.investors.nama as string)
       perUnit.set(f.car_id, cur)
     }
 
@@ -181,6 +182,8 @@ export async function getUnitSiapJual() {
         total_perbaikan: num(c.total_perbaikan),
         total_modal_investor: f?.total ?? 0,
         nisbah_investor_pct: f && f.total > 0 ? Number((f.bobot / f.total).toFixed(2)) : 0,
+        /** Bisa lebih dari satu kalau unit dibiayai urun dana. */
+        investor_nama: f?.nama ?? [],
       }
     })
   }, [] as any[])

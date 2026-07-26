@@ -54,6 +54,22 @@ type UnitSiapJual = {
   total_perbaikan: number
   total_modal_investor: number
   nisbah_investor_pct: number
+  /** Bisa lebih dari satu kalau unit dibiayai urun dana. */
+  investor_nama: string[]
+}
+
+/**
+ * Nisbah tanpa nama pemiliknya bikin bingung, jadi label selalu menyebut
+ * investornya. Untuk urun dana nisbahnya rata-rata tertimbang, dan itu
+ * disebutkan supaya angkanya tidak dikira nisbah satu orang.
+ */
+function labelInvestor(unit: UnitSiapJual) {
+  const nama = unit.investor_nama
+  const nisbah = formatPersen(unit.nisbah_investor_pct)
+  if (nama.length === 0) return `Nisbah investor ${nisbah}`
+  if (nama.length === 1) return `${nama[0]} · nisbah ${nisbah}`
+  if (nama.length === 2) return `${nama[0]} + ${nama[1]} · nisbah rata-rata ${nisbah}`
+  return `${nama.length} investor · nisbah rata-rata ${nisbah}`
 }
 
 export function PenjualanClient({
@@ -355,7 +371,7 @@ function PenjualanFormDialog({
               <SearchableSelect
                 id="jual-sales"
                 options={[
-                  { value: '', label: 'Tanpa Sales' },
+                  { value: '', label: 'Tanpa Salesman' },
                   ...sales.map((s) => ({
                     value: s.id,
                     label: s.nama,
@@ -481,11 +497,7 @@ function PanelKalkulasi({
         <h4 className={cn('text-card-title', rugi ? 'text-danger' : 'text-ink')}>
           {rugi ? 'RUGI' : 'Kalkulasi Laba'}
         </h4>
-        {unit ? (
-          <span className="text-label text-ink-muted">
-            Nisbah investor {formatPersen(unit.nisbah_investor_pct)}
-          </span>
-        ) : null}
+        {unit ? <span className="text-label text-ink-muted">{labelInvestor(unit)}</span> : null}
       </div>
 
       <div className="space-y-1.5">
