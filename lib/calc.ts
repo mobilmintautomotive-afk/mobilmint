@@ -84,8 +84,13 @@ export function hitungPenjualan(input: {
 }
 
 /**
- * Nisbah investor rata-rata tertimbang untuk satu unit.
- * Dipakai kalau investor pendana unit berasal dari golongan berbeda.
+ * Nisbah investor satu unit, ditimbang terhadap besar modal masing-masing
+ * pendana.
+ *
+ * Sejak urun dana dibatasi hanya untuk investor bernisbah sama, semua
+ * pendana satu unit selalu punya nisbah identik sehingga hasilnya sama
+ * dengan nisbah itu sendiri. Rumus tertimbang dipertahankan sebagai
+ * pengaman untuk baris lama dari sebelum aturan tersebut berlaku.
  */
 export function nisbahTertimbang(
   fundings: { amount: number; nisbah_investor_pct: number }[],

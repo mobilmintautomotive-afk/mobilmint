@@ -60,16 +60,17 @@ type UnitSiapJual = {
 
 /**
  * Nisbah tanpa nama pemiliknya bikin bingung, jadi label selalu menyebut
- * investornya. Untuk urun dana nisbahnya rata-rata tertimbang, dan itu
- * disebutkan supaya angkanya tidak dikira nisbah satu orang.
+ * investornya. Urun dana dibatasi hanya untuk investor bernisbah sama
+ * (lihat UrunDanaPanel), jadi satu unit selalu punya satu angka nisbah —
+ * tidak ada rata-rata yang perlu disebut.
  */
 function labelInvestor(unit: UnitSiapJual) {
   const nama = unit.investor_nama
   const nisbah = formatPersen(unit.nisbah_investor_pct)
   if (nama.length === 0) return `Nisbah investor ${nisbah}`
   if (nama.length === 1) return `${nama[0]} · nisbah ${nisbah}`
-  if (nama.length === 2) return `${nama[0]} + ${nama[1]} · nisbah rata-rata ${nisbah}`
-  return `${nama.length} investor · nisbah rata-rata ${nisbah}`
+  if (nama.length === 2) return `${nama[0]} + ${nama[1]} · nisbah ${nisbah}`
+  return `${nama.length} investor · nisbah ${nisbah}`
 }
 
 export function PenjualanClient({

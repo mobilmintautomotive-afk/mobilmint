@@ -24,7 +24,7 @@ export type BarisPendana = {
  * 1. Pilih Investor Utama (bebas, investor manapun yang punya saldo).
  * 2. Kalau saldonya kurang, klik "+ Tambah Investor" — pilihan yang muncul
  *    HANYA investor dengan nisbah yang SAMA PERSIS dengan investor utama,
- *    supaya bagi hasil unit ini tidak perlu dihitung rata-rata tertimbang.
+ *    supaya satu unit selalu punya satu angka nisbah yang jelas pemiliknya.
  * 3. Kalau lebih dari 1 investor, alokasi default proporsional terhadap
  *    saldo, dengan opsi "Atur manual".
  */

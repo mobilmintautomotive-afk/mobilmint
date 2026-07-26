@@ -151,8 +151,13 @@ export async function getDaftarPenjualan() {
 }
 
 /**
- * Unit ready stock + HPP + nisbah tertimbang pendananya,
- * dipakai panel kalkulasi live di form penjualan.
+ * Unit ready stock + HPP + nisbah pendananya, dipakai panel kalkulasi live
+ * di form penjualan.
+ *
+ * Urun dana dibatasi hanya untuk investor bernisbah sama, jadi satu unit
+ * selalu punya satu angka nisbah. Rumus tertimbang di bawah tetap dipakai
+ * karena hasilnya sama persis untuk nilai yang seragam, sekaligus jadi
+ * pengaman kalau ada baris lama dari sebelum aturan itu berlaku.
  */
 export async function getUnitSiapJual() {
   return aman(async (db) => {

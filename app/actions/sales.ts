@@ -48,7 +48,7 @@ export async function buatPenjualan(input: unknown) {
     ) as any
     const hpp = Number(hppRow.hpp)
 
-    // nisbah tertimbang hanya dipakai untuk info; angka final dihitung di
+    // nisbah tidak dipakai di sini; angka final dihitung di
     // process_profit_sharing di bawah.
     const hasil = hitungPenjualan({
       hargaJual: v.harga_jual,

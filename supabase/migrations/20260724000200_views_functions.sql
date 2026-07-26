@@ -351,7 +351,10 @@ begin
     raise exception 'Unit ini tidak punya alokasi modal investor, bagi hasil tidak bisa diproses';
   end if;
 
-  -- nisbah rata-rata tertimbang (investor bisa beda golongan)
+  -- Nisbah unit ini, ditimbang terhadap besar modal tiap pendana.
+  -- Urun dana dibatasi hanya untuk investor bernisbah sama, jadi hasilnya
+  -- selalu sama dengan nisbah itu sendiri; rumus tertimbang dipertahankan
+  -- sebagai pengaman untuk baris lama sebelum aturan tersebut berlaku.
   select coalesce(sum(amount * nisbah_investor_pct) / nullif(sum(amount), 0), 0)
     into v_nisbah
   from car_fundings where car_id = v_sale.car_id;
