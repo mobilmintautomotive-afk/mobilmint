@@ -14,7 +14,7 @@ export default async function PencairanPage() {
       <PageHeader
         title="Pencairan Dana"
         description="Bagi hasil diproses otomatis saat penjualan disimpan. Halaman ini untuk mencatat transfer riilnya ke rekening investor."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Pencairan Dana' }]}
+        breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Pencairan Dana' }]}
       />
       <PencairanClient rows={data} error={error} canWrite={bolehTulis} />
     </>

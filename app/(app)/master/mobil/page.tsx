@@ -15,7 +15,7 @@ export default async function MobilPage() {
       <PageHeader
         title="Mobil"
         description="Katalog seluruh unit beserta status dan HPP-nya."
-        breadcrumb={[{ label: 'Master' }, { label: 'Mobil' }]}
+        breadcrumb={[{ label: 'Stock Unit' }, { label: 'Mobil' }]}
       />
       <MobilTable rows={data} error={error} canWrite={bolehTulis} />
     </>

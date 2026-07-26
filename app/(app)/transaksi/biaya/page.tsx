@@ -54,7 +54,7 @@ export default async function BiayaOperasionalPage({
       <PageHeader
         title="Biaya Operasional"
         description="Biaya jalannya usaha di luar unit mobil — gaji, sewa showroom, listrik, dan marketing. Biaya perbaikan unit dicatat terpisah di menu Perbaikan karena masuk HPP."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Biaya Operasional' }]}
+        breadcrumb={[{ label: 'Operasional' }, { label: 'Biaya Operasional' }]}
         action={<PeriodFilter />}
       />
 

@@ -21,7 +21,7 @@ export default async function PembelianPage() {
       <PageHeader
         title="Pembelian Mobil"
         description="Catat pembelian unit sekaligus alokasi modal investor yang membiayainya."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Pembelian' }]}
+        breadcrumb={[{ label: 'Pembelian' }]}
       />
       <PembelianClient
         rows={list.data}

@@ -23,7 +23,7 @@ export default async function BankPage() {
       <PageHeader
         title="Akun Bank"
         description="Rekening perusahaan beserta saldo terkini. Saldo dihitung dari saldo awal ditambah seluruh mutasi kas — tidak diinput manual."
-        breadcrumb={[{ label: 'Master' }, { label: 'Akun Bank' }]}
+        breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Akun Bank' }]}
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-2">

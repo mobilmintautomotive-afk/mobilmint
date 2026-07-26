@@ -16,7 +16,7 @@ export default async function InvestorPage() {
       <PageHeader
         title="Investor"
         description="Data pemodal beserta saldo terkini. Total investasi dan saldo dihitung otomatis dari akad & mutasi — tidak diinput manual."
-        breadcrumb={[{ label: 'Master' }, { label: 'Investor' }]}
+        breadcrumb={[{ label: 'Investasi' }, { label: 'Investor' }]}
       />
 
       <MasterCrud

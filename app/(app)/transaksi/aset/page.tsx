@@ -19,7 +19,7 @@ export default async function AsetPage() {
       <PageHeader
         title="Aset Perusahaan"
         description="Aset tetap milik pengelola (komputer, furnitur, kendaraan operasional, dll) — tidak memotong saldo investor, berbeda dari unit mobil dagangan."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Aset Perusahaan' }]}
+        breadcrumb={[{ label: 'Operasional' }, { label: 'Aset Perusahaan' }]}
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-2">

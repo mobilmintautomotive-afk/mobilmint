@@ -19,7 +19,7 @@ export default async function AkadPage() {
       <PageHeader
         title="Akad Investor"
         description="Kesepakatan investasi. Saldo investor baru bertambah setelah dana dikonfirmasi masuk rekening."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Akad Investor' }]}
+        breadcrumb={[{ label: 'Investasi' }, { label: 'Akad Investor' }]}
       />
       <AkadClient
         rows={data}

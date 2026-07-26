@@ -19,7 +19,7 @@ export default async function VendorPage() {
       <PageHeader
         title="Vendor"
         description="Bengkel, salon, dan penyedia spare part untuk perbaikan unit."
-        breadcrumb={[{ label: 'Master' }, { label: 'Vendor' }]}
+        breadcrumb={[{ label: 'Perbaikan' }, { label: 'Vendor' }]}
       />
 
       <MasterCrud

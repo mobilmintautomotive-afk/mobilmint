@@ -23,7 +23,7 @@ export default async function KasPage() {
       <PageHeader
         title="Kas & Bank"
         description="Semua arus uang perusahaan. Mutasi dari pembelian, penjualan, dan biaya tercatat otomatis — yang diinput manual hanya setor modal, pencairan hak pengelola, dan transfer antar rekening."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Kas & Bank' }]}
+        breadcrumb={[{ label: 'Kas & Bank' }]}
       />
 
       <KasClient

@@ -16,7 +16,7 @@ export default async function GolonganPage() {
       <PageHeader
         title="Golongan Investasi"
         description="Paket investasi: nilai setoran dan porsi bagi hasil antara investor dan pengelola."
-        breadcrumb={[{ label: 'Master' }, { label: 'Golongan Investasi' }]}
+        breadcrumb={[{ label: 'Investasi' }, { label: 'Golongan Investasi' }]}
       />
 
       <MasterCrud

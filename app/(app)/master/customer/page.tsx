@@ -16,7 +16,7 @@ export default async function CustomerPage() {
       <PageHeader
         title="Customer"
         description="Pembeli unit mobil."
-        breadcrumb={[{ label: 'Master' }, { label: 'Customer' }]}
+        breadcrumb={[{ label: 'Penjualan' }, { label: 'Customer' }]}
       />
 
       <MasterCrud

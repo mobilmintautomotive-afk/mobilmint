@@ -20,7 +20,7 @@ export default async function PerbaikanPage() {
       <PageHeader
         title="Perbaikan"
         description="Setiap biaya perbaikan langsung menambah HPP unit, supaya laba yang dihitung nanti realistis."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Perbaikan' }]}
+        breadcrumb={[{ label: 'Perbaikan' }]}
       />
       <PerbaikanClient
         rows={list.data}

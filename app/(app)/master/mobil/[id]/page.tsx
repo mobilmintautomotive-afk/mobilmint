@@ -24,7 +24,7 @@ export default async function DetailMobilPage({ params }: { params: { id: string
   if (error) {
     return (
       <>
-        <PageHeader title="Detail Unit" breadcrumb={[{ label: 'Master' }, { label: 'Mobil', href: '/master/mobil' }]} />
+        <PageHeader title="Detail Unit" breadcrumb={[{ label: 'Stock Unit' }, { label: 'Mobil', href: '/master/mobil' }]} />
         <div className="mm-card">
           <ErrorState description={error} />
         </div>

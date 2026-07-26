@@ -24,7 +24,7 @@ export default async function PenjualanPage({
       <PageHeader
         title="Penjualan"
         description="Laba bersih dihitung langsung saat Anda mengetik harga jual."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Penjualan' }]}
+        breadcrumb={[{ label: 'Penjualan' }]}
       />
       <PenjualanClient
         rows={list.data}

@@ -16,7 +16,7 @@ export default async function SalesPage() {
       <PageHeader
         title="Salesman"
         description="Tim penjualan beserta komisi standarnya."
-        breadcrumb={[{ label: 'Master' }, { label: 'Salesman' }]}
+        breadcrumb={[{ label: 'Penjualan' }, { label: 'Salesman' }]}
       />
 
       <MasterCrud

@@ -14,6 +14,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Store,
   Truck,
   UserRound,
   UserRoundCheck,
@@ -37,35 +38,68 @@ export type NavGroup = {
   items: NavItem[]
 }
 
-/** Sidebar admin & holding (PRD 04 bagian 2.8). */
+/**
+ * Sidebar admin & holding.
+ *
+ * Dikelompokkan per domain bisnis, BUKAN per jenis data (Master vs
+ * Transaksi). Alasannya satu pekerjaan biasanya butuh masternya sekaligus
+ * transaksinya — mis. mengurus penjualan perlu Customer, Salesman, dan
+ * Penjualan — jadi mengelompokkan begini bikin langkah kerjanya berdekatan
+ * daripada tersebar di dua grup besar.
+ */
 export const NAV_BACKOFFICE: NavGroup[] = [
   {
     label: 'Utama',
     items: [{ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }],
   },
   {
-    label: 'Master',
+    label: 'Investasi',
     items: [
-      { label: 'Mobil', href: '/master/mobil', icon: Car, matchPrefix: true },
       { label: 'Investor', href: '/master/investor', icon: Users, matchPrefix: true },
       { label: 'Golongan Investasi', href: '/master/golongan', icon: BadgePercent },
-      { label: 'Akun Bank', href: '/master/bank', icon: Landmark },
-      { label: 'Customer', href: '/master/customer', icon: UserRound },
-      { label: 'Salesman', href: '/master/sales', icon: UserRoundCheck },
-      { label: 'Supplier', href: '/master/supplier', icon: Truck },
-      { label: 'Vendor', href: '/master/vendor', icon: Wrench },
+      { label: 'Akad Investor', href: '/transaksi/akad', icon: Handshake },
     ],
   },
   {
-    label: 'Transaksi',
+    label: 'Stock Unit',
     items: [
-      { label: 'Akad Investor', href: '/transaksi/akad', icon: Handshake },
-      { label: 'Pembelian', href: '/transaksi/pembelian', icon: ShoppingCart },
-      { label: 'Perbaikan', href: '/transaksi/perbaikan', icon: Wrench },
+      { label: 'Mobil', href: '/master/mobil', icon: Car, matchPrefix: true },
       { label: 'Stock', href: '/transaksi/stock', icon: PackageCheck },
+    ],
+  },
+  {
+    label: 'Penjualan',
+    items: [
+      { label: 'Customer', href: '/master/customer', icon: UserRound },
+      { label: 'Salesman', href: '/master/sales', icon: UserRoundCheck },
       { label: 'Penjualan', href: '/transaksi/penjualan', icon: Receipt },
-      { label: 'Pencairan Dana', href: '/transaksi/pencairan', icon: Banknote },
+    ],
+  },
+  {
+    label: 'Pembelian',
+    items: [
+      { label: 'Supplier', href: '/master/supplier', icon: Truck },
+      { label: 'Pembelian', href: '/transaksi/pembelian', icon: ShoppingCart },
+    ],
+  },
+  {
+    label: 'Perbaikan',
+    items: [
+      { label: 'Vendor', href: '/master/vendor', icon: Store },
+      { label: 'Perbaikan', href: '/transaksi/perbaikan', icon: Wrench },
+    ],
+  },
+  {
+    label: 'Kas & Bank',
+    items: [
+      { label: 'Akun Bank', href: '/master/bank', icon: Landmark },
       { label: 'Kas & Bank', href: '/transaksi/kas', icon: Wallet },
+      { label: 'Pencairan Dana', href: '/transaksi/pencairan', icon: Banknote },
+    ],
+  },
+  {
+    label: 'Operasional',
+    items: [
       { label: 'Biaya Operasional', href: '/transaksi/biaya', icon: ReceiptText },
       { label: 'Aset Perusahaan', href: '/transaksi/aset', icon: Boxes },
     ],

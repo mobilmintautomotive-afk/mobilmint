@@ -19,7 +19,7 @@ export default async function SupplierPage() {
       <PageHeader
         title="Supplier"
         description="Sumber unit mobil: balai lelang, mediator, dan followers."
-        breadcrumb={[{ label: 'Master' }, { label: 'Supplier' }]}
+        breadcrumb={[{ label: 'Pembelian' }, { label: 'Supplier' }]}
       />
 
       <MasterCrud

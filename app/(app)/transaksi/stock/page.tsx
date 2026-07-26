@@ -32,7 +32,7 @@ export default async function StockPage() {
       <PageHeader
         title="Stock Unit"
         description="Seluruh unit yang modalnya masih tertanam — baru dibeli, sedang diperbaiki, maupun siap dijual."
-        breadcrumb={[{ label: 'Transaksi' }, { label: 'Stock' }]}
+        breadcrumb={[{ label: 'Stock Unit' }, { label: 'Stock' }]}
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

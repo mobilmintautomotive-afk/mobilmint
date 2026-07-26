@@ -23,7 +23,7 @@ export default async function DetailInvestorPage({ params }: { params: { id: str
   if (error) {
     return (
       <>
-        <PageHeader title="Detail Investor" breadcrumb={[{ label: 'Master' }, { label: 'Investor', href: '/master/investor' }]} />
+        <PageHeader title="Detail Investor" breadcrumb={[{ label: 'Investasi' }, { label: 'Investor', href: '/master/investor' }]} />
         <div className="mm-card">
           <ErrorState description={error} />
         </div>
