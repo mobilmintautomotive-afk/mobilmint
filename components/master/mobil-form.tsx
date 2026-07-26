@@ -4,9 +4,16 @@ import * as React from 'react'
 import { FormDialog, FormGrid } from '@/components/forms/form-dialog'
 import { PhotoUpload } from '@/components/forms/photo-upload'
 import { Field, Input, Textarea } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SearchableSelect,
+} from '@/components/ui/select'
 import { simpanMobil } from '@/app/actions/master'
-import { TRANSMISI_LABEL } from '@/lib/constants'
+import { MEREK_MOBIL_UMUM, TRANSMISI_LABEL } from '@/lib/constants'
 import type { Car, CarOverview } from '@/types/database'
 
 type FormMobil = {
@@ -81,6 +88,15 @@ export function MobilFormDialog({
 
   const set = (k: keyof FormMobil, v: any) => setForm((s) => ({ ...s, [k]: v }))
 
+  // Merek bukan tabel master tersendiri (cuma kolom teks di `cars`), jadi
+  // merek custom yang sudah tersimpan tetap disertakan supaya tetap
+  // terpilih & bisa dipakai lagi — bukan cuma daftar umum yang tertutup.
+  const merekOptions = React.useMemo(() => {
+    const daftar: string[] = [...MEREK_MOBIL_UMUM]
+    if (form.merek && !daftar.includes(form.merek)) daftar.unshift(form.merek)
+    return daftar.map((m) => ({ value: m, label: m }))
+  }, [form.merek])
+
   return (
     <FormDialog
       open={open}
@@ -111,11 +127,15 @@ export function MobilFormDialog({
       <div className="space-y-5">
         <FormGrid>
           <Field label="Merek" required htmlFor="merek">
-            <Input
+            <SearchableSelect
               id="merek"
+              options={merekOptions}
               value={form.merek}
-              onChange={(e) => set('merek', e.target.value)}
-              placeholder="Toyota"
+              onChange={(v) => set('merek', v)}
+              placeholder="Pilih merek"
+              searchPlaceholder="Cari atau ketik merek baru..."
+              creatable
+              createLabel={(q) => `Tambahkan merek "${q}"`}
             />
           </Field>
           <Field label="Tipe" required htmlFor="tipe">

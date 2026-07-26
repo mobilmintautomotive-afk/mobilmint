@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import * as SelectPrimitive from '@radix-ui/react-select'
-import { Check, ChevronDown, Search } from 'lucide-react'
+import { Check, ChevronDown, Plus, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export const Select = SelectPrimitive.Root
@@ -106,6 +106,8 @@ export function SearchableSelect({
   emptyText = 'Tidak ada data',
   disabled,
   footer,
+  creatable = false,
+  createLabel = (q) => `Tambahkan "${q}"`,
   className,
   id,
 }: {
@@ -117,6 +119,15 @@ export function SearchableSelect({
   emptyText?: string
   disabled?: boolean
   footer?: React.ReactNode
+  /**
+   * Kalau true, teks yang diketik dan belum ada di daftar bisa langsung
+   * dipakai sebagai value lewat baris "+ Tambahkan ..." di bagian bawah.
+   * Dipakai untuk field yang bukan entitas master tersendiri (mis. merek
+   * mobil) — kalau butuh entitas baru (investor, customer), pakai `footer`
+   * untuk membuka dialog tambah data.
+   */
+  creatable?: boolean
+  createLabel?: (query: string) => string
   className?: string
   id?: string
 }) {
@@ -138,6 +149,10 @@ export function SearchableSelect({
         `${o.label} ${o.keterangan ?? ''}`.toLowerCase().includes(q.toLowerCase()),
       )
     : options
+
+  const qTrim = q.trim()
+  const bisaBuatBaru =
+    creatable && qTrim !== '' && !options.some((o) => o.label.toLowerCase() === qTrim.toLowerCase())
 
   return (
     <div ref={rootRef} className={cn('relative', className)}>
@@ -169,35 +184,52 @@ export function SearchableSelect({
           </div>
 
           <div className="mm-scroll max-h-60 overflow-y-auto p-1">
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && !bisaBuatBaru ? (
               <p className="px-3 py-4 text-center text-label text-ink-muted">{emptyText}</p>
             ) : (
-              filtered.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  disabled={o.disabled}
-                  onClick={() => {
-                    onChange(o.value)
-                    setOpen(false)
-                    setQ('')
-                  }}
-                  className={cn(
-                    'flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-left text-body transition-colors hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-50',
-                    o.value === value ? 'bg-accent-soft text-accent' : 'text-ink',
-                  )}
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate">{o.label}</span>
-                    {o.keterangan ? (
-                      <span className="block truncate text-label text-ink-muted">
-                        {o.keterangan}
-                      </span>
-                    ) : null}
-                  </span>
-                  {o.value === value ? <Check className="size-4 shrink-0" /> : null}
-                </button>
-              ))
+              <>
+                {filtered.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    disabled={o.disabled}
+                    onClick={() => {
+                      onChange(o.value)
+                      setOpen(false)
+                      setQ('')
+                    }}
+                    className={cn(
+                      'flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-left text-body transition-colors hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-50',
+                      o.value === value ? 'bg-accent-soft text-accent' : 'text-ink',
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate">{o.label}</span>
+                      {o.keterangan ? (
+                        <span className="block truncate text-label text-ink-muted">
+                          {o.keterangan}
+                        </span>
+                      ) : null}
+                    </span>
+                    {o.value === value ? <Check className="size-4 shrink-0" /> : null}
+                  </button>
+                ))}
+
+                {bisaBuatBaru ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(qTrim)
+                      setOpen(false)
+                      setQ('')
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-body font-medium text-accent transition-colors hover:bg-accent-soft"
+                  >
+                    <Plus className="size-4 shrink-0" />
+                    {createLabel(qTrim)}
+                  </button>
+                ) : null}
+              </>
             )}
           </div>
 

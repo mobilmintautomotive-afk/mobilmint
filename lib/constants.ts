@@ -6,6 +6,45 @@ export const PAGE_SIZE = 20
 /** Ambang default umur stok (hari) — bisa dioverride lewat app_settings. */
 export const AMBANG_UMUR_STOK = 60
 
+/**
+ * Merek mobil umum di pasar Indonesia (baru maupun bekas). Bukan daftar
+ * tertutup — form Mobil tetap bisa menambah merek lain lewat fitur
+ * "Tambahkan" di dropdown, karena `merek` cuma kolom teks biasa, bukan
+ * tabel master tersendiri.
+ */
+export const MEREK_MOBIL_UMUM = [
+  'Toyota',
+  'Honda',
+  'Daihatsu',
+  'Suzuki',
+  'Mitsubishi',
+  'Nissan',
+  'Mazda',
+  'Isuzu',
+  'Wuling',
+  'Hyundai',
+  'Kia',
+  'Chery',
+  'BYD',
+  'DFSK',
+  'MG',
+  'Mercedes-Benz',
+  'BMW',
+  'Mini',
+  'Volvo',
+  'Subaru',
+  'Ford',
+  'Chevrolet',
+  'Datsun',
+  'Peugeot',
+  'Volkswagen',
+  'Lexus',
+  'Land Rover',
+  'Jeep',
+  'Renault',
+  'Proton',
+] as const
+
 export const CAR_STATUS = [
   'DIBELI',
   'PERBAIKAN',
