@@ -68,14 +68,6 @@ export const NAV_BACKOFFICE: NavGroup[] = [
     ],
   },
   {
-    label: 'Penjualan',
-    items: [
-      { label: 'Customer', href: '/master/customer', icon: UserRound },
-      { label: 'Salesman', href: '/master/sales', icon: UserRoundCheck },
-      { label: 'Penjualan', href: '/transaksi/penjualan', icon: Receipt },
-    ],
-  },
-  {
     label: 'Pembelian',
     items: [
       { label: 'Supplier', href: '/master/supplier', icon: Truck },
@@ -87,6 +79,14 @@ export const NAV_BACKOFFICE: NavGroup[] = [
     items: [
       { label: 'Vendor', href: '/master/vendor', icon: Store },
       { label: 'Perbaikan', href: '/transaksi/perbaikan', icon: Wrench },
+    ],
+  },
+  {
+    label: 'Penjualan',
+    items: [
+      { label: 'Customer', href: '/master/customer', icon: UserRound },
+      { label: 'Salesman', href: '/master/sales', icon: UserRoundCheck },
+      { label: 'Penjualan', href: '/transaksi/penjualan', icon: Receipt },
     ],
   },
   {
