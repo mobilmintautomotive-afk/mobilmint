@@ -128,7 +128,11 @@ export const akadSchema = z
   .object({
     id: z.string().uuid().optional(),
     investor_id: z.string().uuid({ message: 'Investor wajib dipilih' }),
-    nilai_investasi: uang.refine((v) => v > 0, 'Nilai investasi harus lebih dari nol'),
+    /** null = tanpa batas plafon (kesepakatan unlimited). */
+    nilai_investasi: uang
+      .refine((v) => v > 0, 'Nilai investasi harus lebih dari nol')
+      .optional()
+      .nullable(),
     nisbah_investor_pct: z.coerce
       .number({ message: 'Nisbah harus berupa angka' })
       .min(0, 'Nisbah minimal 0')

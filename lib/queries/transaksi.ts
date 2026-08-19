@@ -15,7 +15,7 @@ export async function getDaftarAkad() {
     ) as any[]
     return rows.map((r) => ({
       ...r,
-      nilai_investasi: num(r.nilai_investasi),
+      nilai_investasi: r.nilai_investasi == null ? null : num(r.nilai_investasi),
       nisbah_investor_pct: num(r.nisbah_investor_pct),
       nisbah_pengelola_pct: num(r.nisbah_pengelola_pct),
       jumlah_diterima: r.jumlah_diterima == null ? null : num(r.jumlah_diterima),

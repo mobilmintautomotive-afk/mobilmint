@@ -12,6 +12,7 @@ import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
 import { Field, Input, MoneyInput, Textarea } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/primitives'
 import { SearchableSelect } from '@/components/ui/select'
 import { buatAkad, konfirmasiDanaDiterima, batalkanAkad } from '@/app/actions/contracts'
 import { simpanInvestor } from '@/app/actions/master'
@@ -22,7 +23,8 @@ type Akad = {
   no_akad: string
   investor_id: string
   investor_nama: string
-  nilai_investasi: number
+  /** null = kesepakatan tanpa batas plafon. */
+  nilai_investasi: number | null
   nisbah_investor_pct: number
   tanggal_akad: string
   tanggal_dana_diterima: string | null
@@ -69,7 +71,14 @@ export function AkadClient({
         accessorKey: 'nilai_investasi',
         header: 'Nilai Investasi',
         meta: { align: 'right' as const },
-        cell: ({ getValue }) => <Money value={getValue() as number} />,
+        cell: ({ getValue }) => {
+          const v = getValue() as number | null
+          return v === null ? (
+            <span className="text-ink-subtle">Tanpa batas</span>
+          ) : (
+            <Money value={v} />
+          )
+        },
       },
       {
         accessorKey: 'nisbah_investor_pct',
@@ -198,7 +207,11 @@ export function AkadClient({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-label text-ink-muted">{formatTanggal(row.tanggal_akad)}</span>
-              <Money value={row.nilai_investasi} className="font-medium" />
+              {row.nilai_investasi === null ? (
+                <span className="text-label text-ink-subtle">Tanpa batas</span>
+              ) : (
+                <Money value={row.nilai_investasi} className="font-medium" />
+              )}
             </div>
             {canWrite && row.status === 'MENUNGGU_DANA' ? (
               <Button size="sm" variant="accent" className="w-full" onClick={() => setKonfirmasi(row)}>
@@ -245,6 +258,7 @@ function AkadFormDialog({
 }) {
   const [investorId, setInvestorId] = React.useState('')
   const [nilaiInvestasi, setNilaiInvestasi] = React.useState(0)
+  const [tanpaBatas, setTanpaBatas] = React.useState(false)
   const [nisbahInvestor, setNisbahInvestor] = React.useState('')
   const [tanggal, setTanggal] = React.useState(todayJakarta())
   const [tenor, setTenor] = React.useState<string>('')
@@ -262,6 +276,7 @@ function AkadFormDialog({
     if (!open) return
     setInvestorId('')
     setNilaiInvestasi(0)
+    setTanpaBatas(false)
     setNisbahInvestor(String(100 - defaultNisbahPengelola))
     setTanggal(todayJakarta())
     setTenor('')
@@ -277,11 +292,11 @@ function AkadFormDialog({
         description="Nilai investasi dan nisbah sesuai kesepakatan dengan investor ini — tanggal akad berlaku sebagai tanggal mulai kesepakatan."
         submitLabel="Simpan Akad"
         successMessage="Akad dibuat dengan status Menunggu Dana"
-        disabled={!investorId || nilaiInvestasi <= 0 || !nisbahValid}
+        disabled={!investorId || (!tanpaBatas && nilaiInvestasi <= 0) || !nisbahValid}
         onSubmit={() =>
           buatAkad({
             investor_id: investorId,
-            nilai_investasi: nilaiInvestasi,
+            nilai_investasi: tanpaBatas ? null : nilaiInvestasi,
             nisbah_investor_pct: nisbahInvestorNum,
             nisbah_pengelola_pct: nisbahPengelolaNum,
             tanggal_akad: tanggal,
@@ -313,8 +328,18 @@ function AkadFormDialog({
             />
           </Field>
 
-          <Field label="Nilai Investasi" required>
-            <MoneyInput value={nilaiInvestasi} onChange={setNilaiInvestasi} />
+          <Field label="Nilai Investasi" required={!tanpaBatas}>
+            <div className="space-y-2">
+              <MoneyInput
+                value={nilaiInvestasi}
+                onChange={setNilaiInvestasi}
+                disabled={tanpaBatas}
+              />
+              <label className="flex items-center gap-2 text-label text-ink-muted">
+                <Checkbox checked={tanpaBatas} onCheckedChange={(v) => setTanpaBatas(Boolean(v))} />
+                Tanpa batas plafon (unlimited)
+              </label>
+            </div>
           </Field>
 
           <FormGrid>
@@ -423,7 +448,7 @@ function KonfirmasiDanaDialog({
   onOpenChange: (v: boolean) => void
 }) {
   const [tanggal, setTanggal] = React.useState(todayJakarta())
-  const [jumlah, setJumlah] = React.useState(akad.nilai_investasi)
+  const [jumlah, setJumlah] = React.useState(akad.nilai_investasi ?? 0)
 
   return (
     <FormDialog
@@ -445,7 +470,11 @@ function KonfirmasiDanaDialog({
       <div className="space-y-4">
         <div className="rounded-lg bg-surface-alt p-4">
           <p className="mm-label-caps">Nilai akad</p>
-          <Money value={akad.nilai_investasi} size="lg" className="mt-1 block" />
+          {akad.nilai_investasi === null ? (
+            <p className="mt-1 text-card-title font-semibold text-ink-subtle">Tanpa batas</p>
+          ) : (
+            <Money value={akad.nilai_investasi} size="lg" className="mt-1 block" />
+          )}
         </div>
 
         <Field label="Tanggal Terima Dana" required htmlFor="tgl-dana">

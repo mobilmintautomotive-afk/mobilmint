@@ -127,7 +127,11 @@ export default async function DetailInvestorPage({ params }: { params: { id: str
                     <tr key={k.id} className="border-b border-line last:border-0">
                       <td className="py-3 text-body tnum text-ink">{k.no_akad}</td>
                       <td className="py-3 text-right">
-                        <Money value={k.nilai_investasi} />
+                        {k.nilai_investasi === null ? (
+                          <span className="text-ink-subtle">Tanpa batas</span>
+                        ) : (
+                          <Money value={k.nilai_investasi} />
+                        )}
                       </td>
                       <td className="py-3 text-right tnum text-ink-muted">
                         {formatPersen(k.nisbah_investor_pct)}
