@@ -60,9 +60,11 @@ perlu disentuh, lalu hapus komponen `RoleSwitcher` dari navbar.
 ## Alur kerja aplikasi
 
 ```
-Master (golongan, investor, supplier, vendor, sales, customer, mobil)
+Master (golongan, investor, supplier, vendor, sales, customer)
   → Akad Investor        → konfirmasi dana → saldo investor naik
-  → Pembelian Mobil      → alokasi modal proporsional → saldo turun, unit DIBELI
+  → Pembelian Mobil      → data unit diinput di sini (bukan Master Mobil
+                           terpisah) + alokasi modal proporsional
+                         → saldo turun, unit DIBELI
   → Perbaikan (opsional) → biaya masuk ke HPP unit
   → Tandai Siap Jual     → unit READY_STOCK
   → Penjualan            → laba bersih terhitung, unit TERJUAL

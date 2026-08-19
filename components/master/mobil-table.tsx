@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Car, Eye, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Car, Eye, Pencil, ShoppingCart, Trash2 } from 'lucide-react'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
@@ -188,15 +188,12 @@ export function MobilTable({
         ]}
         toolbarAction={
           canWrite ? (
-            <Button
-              onClick={() => {
-                setEditing(null)
-                setOpen(true)
-              }}
-            >
-              <Plus />
-              <span className="hidden sm:inline">Tambah Mobil</span>
-              <span className="sm:hidden">Tambah</span>
+            <Button asChild variant="secondary">
+              <Link href="/transaksi/pembelian">
+                <ShoppingCart />
+                <span className="hidden sm:inline">Catat Pembelian</span>
+                <span className="sm:hidden">Beli</span>
+              </Link>
             </Button>
           ) : null
         }
@@ -204,17 +201,14 @@ export function MobilTable({
           <EmptyState
             icon={Car}
             title="Belum ada unit mobil"
-            description="Tambahkan unit pertama, lalu catat pembeliannya di menu Transaksi > Pembelian."
+            description="Unit muncul di sini otomatis begitu pembeliannya dicatat — data mobil sengaja tidak diinput terpisah, supaya unit yang tercatat selalu unit yang memang sudah dibeli."
             action={
               canWrite ? (
-                <Button
-                  onClick={() => {
-                    setEditing(null)
-                    setOpen(true)
-                  }}
-                >
-                  <Plus />
-                  Tambah Mobil
+                <Button asChild>
+                  <Link href="/transaksi/pembelian">
+                    <ShoppingCart />
+                    Catat Pembelian
+                  </Link>
                 </Button>
               ) : undefined
             }
