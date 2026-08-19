@@ -281,7 +281,6 @@ export function LaporanLabaRugiPDF({
 
 export type DataLaporanInvestorPDF = {
   nama: string
-  golongan: string | null
   nisbahPct: number | null
   saldo: number
   totalInvestasi: number
@@ -318,11 +317,8 @@ export function LaporanInvestorPDF({
           <View>
             <Text style={s.judul}>LAPORAN INVESTOR</Text>
             <Text style={s.periode}>{data.nama}</Text>
-            {data.golongan ? (
-              <Text style={s.periode}>
-                Golongan {data.golongan}
-                {data.nisbahPct !== null ? ` — porsi bagi hasil ${formatPersen(data.nisbahPct)}` : ''}
-              </Text>
+            {data.nisbahPct !== null ? (
+              <Text style={s.periode}>Porsi bagi hasil {formatPersen(data.nisbahPct)}</Text>
             ) : null}
           </View>
         </View>

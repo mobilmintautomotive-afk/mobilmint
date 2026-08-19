@@ -116,7 +116,6 @@ export default async function DetailInvestorPage({ params }: { params: { id: str
                 <thead>
                   <tr className="border-b border-line">
                     <th className="pb-2 text-left text-caps uppercase text-ink-subtle">No. Akad</th>
-                    <th className="pb-2 text-left text-caps uppercase text-ink-subtle">Golongan</th>
                     <th className="pb-2 text-right text-caps uppercase text-ink-subtle">Nilai</th>
                     <th className="pb-2 text-right text-caps uppercase text-ink-subtle">Nisbah</th>
                     <th className="pb-2 text-left text-caps uppercase text-ink-subtle">Tanggal</th>
@@ -127,9 +126,6 @@ export default async function DetailInvestorPage({ params }: { params: { id: str
                   {data.kontrak.map((k: any) => (
                     <tr key={k.id} className="border-b border-line last:border-0">
                       <td className="py-3 text-body tnum text-ink">{k.no_akad}</td>
-                      <td className="py-3 text-body text-ink-muted">
-                        {k.investment_tiers?.nama_golongan ?? '-'}
-                      </td>
                       <td className="py-3 text-right">
                         <Money value={k.nilai_investasi} />
                       </td>

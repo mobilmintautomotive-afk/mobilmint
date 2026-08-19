@@ -17,7 +17,7 @@ import { getNeracaPengelola } from '@/lib/queries/neraca'
 import { getDashboardInvestor } from '@/lib/queries/investor'
 import { getInvestorRingkas } from '@/lib/queries/master'
 import { getCurrentRole } from '@/lib/dev-role'
-import { formatRupiah, formatTanggal } from '@/lib/format'
+import { formatPersen, formatRupiah, formatTanggal } from '@/lib/format'
 
 export const metadata: Metadata = { title: 'Neraca' }
 
@@ -249,9 +249,9 @@ async function NeracaInvestorView({ investorId }: { investorId: string }) {
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <h2 className="text-page-title text-ink">{data.nama}</h2>
-        {data.golongan ? (
+        {data.nisbahPct !== null ? (
           <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[12px] font-medium text-accent">
-            {data.golongan}
+            Nisbah {formatPersen(data.nisbahPct)}
           </span>
         ) : null}
       </div>

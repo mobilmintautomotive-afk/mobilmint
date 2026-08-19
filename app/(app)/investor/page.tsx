@@ -12,7 +12,7 @@ import { TombolLaporanInvestor } from '@/components/investor/tombol-laporan'
 import { InfoHint, TooltipProvider } from '@/components/ui/primitives'
 import { getDashboardInvestor } from '@/lib/queries/investor'
 import { getCurrentInvestorId } from '@/lib/dev-role'
-import { formatRupiah } from '@/lib/format'
+import { formatPersen, formatRupiah } from '@/lib/format'
 
 export const metadata: Metadata = { title: 'Dashboard Saya' }
 
@@ -59,9 +59,9 @@ export default async function DashboardInvestorPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-page-title text-ink">Halo, {data.nama}</h1>
-            {data.golongan ? (
+            {data.nisbahPct !== null ? (
               <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[12px] font-medium text-accent">
-                {data.golongan}
+                Nisbah {formatPersen(data.nisbahPct)}
               </span>
             ) : null}
           </div>

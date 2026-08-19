@@ -121,7 +121,7 @@ export function UrunDanaPanel({
             .map((i) => ({
               value: i.investor_id,
               label: i.nama,
-              keterangan: `${i.golongan ?? 'Tanpa golongan'} · nisbah ${
+              keterangan: `Nisbah ${
                 i.nisbah_investor_pct !== null ? formatPersen(i.nisbah_investor_pct) : '-'
               } · Saldo ${formatRupiah(i.saldo)}`,
             }))}

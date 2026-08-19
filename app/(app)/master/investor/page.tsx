@@ -31,7 +31,7 @@ export default async function InvestorPage() {
           { key: 'nama', header: 'Nama' },
           { key: 'no_tlp', header: 'No. Telepon' },
           { key: 'email', header: 'Email' },
-          { key: 'golongan', header: 'Golongan Aktif' },
+          { key: 'nisbah_aktif', header: 'Nisbah Aktif', kind: 'percent' },
           { key: 'total_investasi', header: 'Total Investasi', kind: 'money' },
           { key: 'saldo', header: 'Saldo Saat Ini', kind: 'money' },
           { key: 'is_active', header: 'Status', kind: 'aktif', align: 'center' },

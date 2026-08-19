@@ -7,8 +7,11 @@ import { akadSchema, konfirmasiDanaSchema } from '@/lib/validations'
 const PATHS = ['/transaksi/akad', '/master/investor', '/dashboard', '/investor']
 
 /**
- * Buat akad baru. Nilai investasi & nisbah DISALIN (snapshot) dari golongan
- * saat ini — kalau golongan diubah nanti, akad lama tidak ikut berubah.
+ * Buat akad baru. Nilai investasi & nisbah adalah kesepakatan langsung
+ * dengan investor ini (bukan turunan dari golongan/tier bersama) —
+ * `tanggal_akad` berfungsi sebagai tanggal berlaku kesepakatan itu. Kalau
+ * kesepakatan berubah (mis. investor menambah investasi dengan nisbah
+ * baru), cukup buat akad baru; akad lama tidak ikut berubah.
  * Saldo BELUM bertambah sampai dana dikonfirmasi.
  */
 export async function buatAkad(input: unknown) {
@@ -19,14 +22,6 @@ export async function buatAkad(input: unknown) {
   const v = parsed.data
 
   const res = await jalankan(async (db) => {
-    const tier = cek(
-      await db
-        .from('investment_tiers')
-        .select('nilai_investasi, nisbah_investor_pct, nisbah_pengelola_pct, tenor_bulan')
-        .eq('id', v.tier_id)
-        .single(),
-    ) as any
-
     const no = cek(await db.rpc('fn_next_doc_number', { p_prefix: 'AKD', p_date: v.tanggal_akad }))
 
     const row = cek(
@@ -35,11 +30,10 @@ export async function buatAkad(input: unknown) {
         .insert({
           no_akad: no,
           investor_id: v.investor_id,
-          tier_id: v.tier_id,
-          nilai_investasi: tier.nilai_investasi,
-          nisbah_investor_pct: tier.nisbah_investor_pct,
-          nisbah_pengelola_pct: tier.nisbah_pengelola_pct,
-          tenor_bulan: v.tenor_bulan ?? tier.tenor_bulan,
+          nilai_investasi: v.nilai_investasi,
+          nisbah_investor_pct: v.nisbah_investor_pct,
+          nisbah_pengelola_pct: v.nisbah_pengelola_pct,
+          tenor_bulan: v.tenor_bulan,
           tanggal_akad: v.tanggal_akad,
           dokumen_url: v.dokumen_url,
           catatan: v.catatan,
@@ -72,11 +66,7 @@ export async function konfirmasiDanaDiterima(input: unknown) {
 
   const res = await jalankan(async (db) => {
     const akad = cek(
-      await db
-        .from('investor_contracts')
-        .select('*, investment_tiers(nama_golongan)')
-        .eq('id', v.contract_id)
-        .single(),
+      await db.from('investor_contracts').select('*').eq('id', v.contract_id).single(),
     ) as any
 
     if (akad.status !== 'MENUNGGU_DANA') {
@@ -104,7 +94,7 @@ export async function konfirmasiDanaDiterima(input: unknown) {
           contract_id: v.contract_id,
           tipe: 'SETORAN',
           amount: v.jumlah_diterima,
-          keterangan: `Setoran investasi golongan ${akad.investment_tiers?.nama_golongan ?? '-'}`,
+          keterangan: `Setoran investasi — nisbah ${akad.nisbah_investor_pct}%`,
           ref_table: 'investor_contracts',
           ref_id: v.contract_id,
           tanggal: v.tanggal_dana_diterima,

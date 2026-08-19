@@ -53,7 +53,6 @@ export async function GET(req: NextRequest) {
           kop={kop}
           data={{
             nama: data.nama,
-            golongan: data.golongan,
             nisbahPct: data.nisbahPct,
             saldo: data.saldo,
             totalInvestasi: data.totalInvestasi,

@@ -9,7 +9,7 @@ export async function getDaftarAkad() {
     const rows = unwrap(
       await db
         .from('investor_contracts')
-        .select('*, investors(nama), investment_tiers(nama_golongan)')
+        .select('*, investors(nama)')
         .order('tanggal_akad', { ascending: false })
         .range(0, LIST_LIMIT - 1),
     ) as any[]
@@ -20,7 +20,6 @@ export async function getDaftarAkad() {
       nisbah_pengelola_pct: num(r.nisbah_pengelola_pct),
       jumlah_diterima: r.jumlah_diterima == null ? null : num(r.jumlah_diterima),
       investor_nama: r.investors?.nama ?? '-',
-      golongan: r.investment_tiers?.nama_golongan ?? '-',
     }))
   }, [] as any[])
 }

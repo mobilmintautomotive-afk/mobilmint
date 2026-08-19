@@ -33,7 +33,6 @@ export function cek<T = any>(res: { data: any; error: { message: string } | null
 /** Ubah pesan error Postgres yang umum jadi bahasa Indonesia. */
 export function terjemahkanError(msg: string): string {
   if (/duplicate key/i.test(msg)) {
-    if (/nama_golongan/i.test(msg)) return 'Nama golongan itu sudah dipakai.'
     if (/email/i.test(msg)) return 'Email itu sudah terdaftar.'
     if (/car_id/i.test(msg)) return 'Unit ini sudah punya transaksi tersebut.'
     return 'Data dengan nilai unik yang sama sudah ada.'

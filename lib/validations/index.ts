@@ -82,27 +82,6 @@ export const investorSchema = z.object({
   is_active: z.boolean().default(true),
 })
 
-/* ------------------------------ Golongan ----------------------------- */
-
-export const golonganSchema = z
-  .object({
-    id: z.string().uuid().optional(),
-    nama_golongan: wajib('Nama golongan'),
-    nilai_investasi: uang.refine((v) => v > 0, 'Nilai investasi harus lebih dari nol'),
-    nisbah_investor_pct: z.coerce
-      .number({ message: 'Nisbah harus berupa angka' })
-      .min(0, 'Nisbah minimal 0')
-      .max(100, 'Nisbah maksimal 100'),
-    nisbah_pengelola_pct: z.coerce.number().min(0).max(100),
-    tenor_bulan: z.coerce.number().int().min(0).optional().nullable(),
-    deskripsi: opsional,
-    is_active: z.boolean().default(true),
-  })
-  .refine((v) => v.nisbah_investor_pct + v.nisbah_pengelola_pct === 100, {
-    message: 'Nisbah investor + nisbah pengelola harus tepat 100%',
-    path: ['nisbah_investor_pct'],
-  })
-
 /* ------------------ Customer / Sales / Supplier / Vendor ------------------ */
 
 export const customerSchema = z.object({
@@ -145,15 +124,25 @@ export const vendorSchema = z.object({
 
 /* -------------------------------- Akad ------------------------------- */
 
-export const akadSchema = z.object({
-  id: z.string().uuid().optional(),
-  investor_id: z.string().uuid({ message: 'Investor wajib dipilih' }),
-  tier_id: z.string().uuid({ message: 'Golongan investasi wajib dipilih' }),
-  tanggal_akad: tanggal,
-  tenor_bulan: z.coerce.number().int().min(0).optional().nullable(),
-  dokumen_url: opsional,
-  catatan: opsional,
-})
+export const akadSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    investor_id: z.string().uuid({ message: 'Investor wajib dipilih' }),
+    nilai_investasi: uang.refine((v) => v > 0, 'Nilai investasi harus lebih dari nol'),
+    nisbah_investor_pct: z.coerce
+      .number({ message: 'Nisbah harus berupa angka' })
+      .min(0, 'Nisbah minimal 0')
+      .max(100, 'Nisbah maksimal 100'),
+    nisbah_pengelola_pct: z.coerce.number().min(0).max(100),
+    tanggal_akad: tanggal,
+    tenor_bulan: z.coerce.number().int().min(0).optional().nullable(),
+    dokumen_url: opsional,
+    catatan: opsional,
+  })
+  .refine((v) => v.nisbah_investor_pct + v.nisbah_pengelola_pct === 100, {
+    message: 'Nisbah investor + nisbah pengelola harus tepat 100%',
+    path: ['nisbah_investor_pct'],
+  })
 
 export const konfirmasiDanaSchema = z.object({
   contract_id: z.string().uuid(),

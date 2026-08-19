@@ -21,9 +21,7 @@ type Akad = {
   id: string
   no_akad: string
   investor_id: string
-  tier_id: string
   investor_nama: string
-  golongan: string
   nilai_investasi: number
   nisbah_investor_pct: number
   tanggal_akad: string
@@ -32,27 +30,19 @@ type Akad = {
   status: string
 }
 
-type Tier = {
-  id: string
-  nama_golongan: string
-  nilai_investasi: number
-  nisbah_investor_pct: number
-  nisbah_pengelola_pct: number
-  tenor_bulan: number | null
-}
-
 export function AkadClient({
   rows,
   error,
   canWrite,
   investors,
-  tiers,
+  defaultNisbahPengelola,
 }: {
   rows: Akad[]
   error: string | null
   canWrite: boolean
   investors: { id: string; nama: string }[]
-  tiers: Tier[]
+  /** Saran awal nisbah pengelola dari Pengaturan — tetap bisa diubah bebas per akad. */
+  defaultNisbahPengelola: number
 }) {
   const [openForm, setOpenForm] = React.useState(false)
   const [konfirmasi, setKonfirmasi] = React.useState<Akad | null>(null)
@@ -75,7 +65,6 @@ export function AkadClient({
         cell: ({ getValue }) => formatTanggal(getValue() as string),
       },
       { accessorKey: 'investor_nama', header: 'Investor' },
-      { accessorKey: 'golongan', header: 'Golongan' },
       {
         accessorKey: 'nilai_investasi',
         header: 'Nilai Investasi',
@@ -153,7 +142,7 @@ export function AkadClient({
       <DataTable<Akad>
         columns={columns}
         data={data}
-        searchKeys={['no_akad', 'investor_nama', 'golongan']}
+        searchKeys={['no_akad', 'investor_nama']}
         searchPlaceholder="Cari no. akad atau nama investor..."
         exportName="akad-investor"
         error={error}
@@ -202,7 +191,7 @@ export function AkadClient({
               <div className="min-w-0">
                 <p className="truncate font-medium text-ink">{row.investor_nama}</p>
                 <p className="text-label text-ink-muted">
-                  {row.no_akad} · {row.golongan}
+                  {row.no_akad} · nisbah {formatPersen(row.nisbah_investor_pct)}
                 </p>
               </div>
               <StatusBadge status={row.status} />
@@ -225,7 +214,7 @@ export function AkadClient({
         open={openForm}
         onOpenChange={setOpenForm}
         investors={investors}
-        tiers={tiers}
+        defaultNisbahPengelola={defaultNisbahPengelola}
       />
 
       {konfirmasi ? (
@@ -247,15 +236,16 @@ function AkadFormDialog({
   open,
   onOpenChange,
   investors,
-  tiers,
+  defaultNisbahPengelola,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   investors: { id: string; nama: string }[]
-  tiers: Tier[]
+  defaultNisbahPengelola: number
 }) {
   const [investorId, setInvestorId] = React.useState('')
-  const [tierId, setTierId] = React.useState('')
+  const [nilaiInvestasi, setNilaiInvestasi] = React.useState(0)
+  const [nisbahInvestor, setNisbahInvestor] = React.useState('')
   const [tanggal, setTanggal] = React.useState(todayJakarta())
   const [tenor, setTenor] = React.useState<string>('')
   const [catatan, setCatatan] = React.useState('')
@@ -263,20 +253,20 @@ function AkadFormDialog({
   const [namaBaru, setNamaBaru] = React.useState('')
   const [tlpBaru, setTlpBaru] = React.useState('')
 
-  const tier = tiers.find((t) => t.id === tierId)
+  const nisbahInvestorNum = Number(nisbahInvestor)
+  const nisbahValid =
+    nisbahInvestor !== '' && nisbahInvestorNum >= 0 && nisbahInvestorNum <= 100
+  const nisbahPengelolaNum = nisbahValid ? Math.round((100 - nisbahInvestorNum) * 100) / 100 : null
 
   React.useEffect(() => {
     if (!open) return
     setInvestorId('')
-    setTierId('')
+    setNilaiInvestasi(0)
+    setNisbahInvestor(String(100 - defaultNisbahPengelola))
     setTanggal(todayJakarta())
     setTenor('')
     setCatatan('')
-  }, [open])
-
-  React.useEffect(() => {
-    if (tier?.tenor_bulan != null) setTenor(String(tier.tenor_bulan))
-  }, [tier])
+  }, [open, defaultNisbahPengelola])
 
   return (
     <>
@@ -284,14 +274,16 @@ function AkadFormDialog({
         open={open}
         onOpenChange={onOpenChange}
         title="Akad Investor Baru"
-        description="Nilai investasi dan nisbah terisi otomatis dari golongan yang dipilih."
+        description="Nilai investasi dan nisbah sesuai kesepakatan dengan investor ini — tanggal akad berlaku sebagai tanggal mulai kesepakatan."
         submitLabel="Simpan Akad"
         successMessage="Akad dibuat dengan status Menunggu Dana"
-        disabled={!investorId || !tierId}
+        disabled={!investorId || nilaiInvestasi <= 0 || !nisbahValid}
         onSubmit={() =>
           buatAkad({
             investor_id: investorId,
-            tier_id: tierId,
+            nilai_investasi: nilaiInvestasi,
+            nisbah_investor_pct: nisbahInvestorNum,
+            nisbah_pengelola_pct: nisbahPengelolaNum,
             tanggal_akad: tanggal,
             tenor_bulan: tenor === '' ? null : Number(tenor),
             catatan,
@@ -321,28 +313,32 @@ function AkadFormDialog({
             />
           </Field>
 
-          <Field label="Golongan Investasi" required htmlFor="pilih-golongan">
-            <SearchableSelect
-              id="pilih-golongan"
-              options={tiers.map((t) => ({
-                value: t.id,
-                label: t.nama_golongan,
-                keterangan: `${formatRupiah(t.nilai_investasi)} · nisbah investor ${formatPersen(t.nisbah_investor_pct)}`,
-              }))}
-              value={tierId}
-              onChange={setTierId}
-              placeholder="Pilih golongan"
-              emptyText="Belum ada golongan aktif"
-            />
+          <Field label="Nilai Investasi" required>
+            <MoneyInput value={nilaiInvestasi} onChange={setNilaiInvestasi} />
           </Field>
 
-          {tier ? (
-            <div className="grid gap-3 rounded-lg bg-accent-soft p-4 sm:grid-cols-3">
-              <RingkasTier label="Nilai Investasi" value={formatRupiah(tier.nilai_investasi)} />
-              <RingkasTier label="Nisbah Investor" value={formatPersen(tier.nisbah_investor_pct)} />
-              <RingkasTier label="Nisbah Pengelola" value={formatPersen(tier.nisbah_pengelola_pct)} />
-            </div>
-          ) : null}
+          <FormGrid>
+            <Field label="Nisbah Investor (%)" required htmlFor="nisbah-investor">
+              <Input
+                id="nisbah-investor"
+                type="number"
+                min={0}
+                max={100}
+                value={nisbahInvestor}
+                onChange={(e) => setNisbahInvestor(e.target.value)}
+              />
+            </Field>
+            <Field
+              label="Nisbah Pengelola (%)"
+              hint="Otomatis, sisa dari nisbah investor"
+            >
+              <Input
+                type="number"
+                disabled
+                value={nisbahPengelolaNum ?? ''}
+              />
+            </Field>
+          </FormGrid>
 
           <FormGrid>
             <Field label="Tanggal Akad" required htmlFor="tgl-akad">
@@ -353,7 +349,7 @@ function AkadFormDialog({
                 onChange={(e) => setTanggal(e.target.value)}
               />
             </Field>
-            <Field label="Tenor (bulan)" hint="Terisi dari golongan, boleh diubah" htmlFor="tenor">
+            <Field label="Tenor (bulan)" hint="Opsional" htmlFor="tenor">
               <Input
                 id="tenor"
                 type="number"
@@ -412,15 +408,6 @@ function AkadFormDialog({
         </div>
       </FormDialog>
     </>
-  )
-}
-
-function RingkasTier({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-caps uppercase text-accent/70">{label}</p>
-      <p className="mt-0.5 font-semibold tnum text-accent">{value}</p>
-    </div>
   )
 }
 

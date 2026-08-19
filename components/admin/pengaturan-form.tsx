@@ -117,7 +117,7 @@ export function PengaturanForm({
         <div className="space-y-4">
           <Field
             label="Default Nisbah Pengelola (%)"
-            hint="Dipakai sebagai saran saat membuat golongan investasi baru"
+            hint="Dipakai sebagai saran nisbah pengelola saat membuat akad baru"
             htmlFor="nisbah-default"
           >
             <Input

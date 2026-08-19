@@ -6,7 +6,6 @@ import type { InvestorLedger } from '@/types/database'
 
 export type DashboardInvestor = {
   nama: string
-  golongan: string | null
   nisbahPct: number | null
   saldo: number
   totalInvestasi: number
@@ -34,7 +33,6 @@ export type DashboardInvestor = {
 
 const KOSONG: DashboardInvestor = {
   nama: '',
-  golongan: null,
   nisbahPct: null,
   saldo: 0,
   totalInvestasi: 0,
@@ -61,7 +59,7 @@ export async function getDashboardInvestor(investorId: string) {
       db.from('v_investor_balance').select('*').eq('investor_id', investorId).maybeSingle(),
       db
         .from('investor_contracts')
-        .select('status, nisbah_investor_pct, tanggal_akad, investment_tiers(nama_golongan)')
+        .select('status, nisbah_investor_pct, tanggal_akad')
         .eq('investor_id', investorId)
         .eq('status', 'AKTIF')
         .order('tanggal_akad', { ascending: false }),
@@ -147,7 +145,6 @@ export async function getDashboardInvestor(investorId: string) {
 
     return {
       nama: (inv.data as any)?.nama ?? '',
-      golongan: k?.investment_tiers?.nama_golongan ?? null,
       nisbahPct: k ? num(k.nisbah_investor_pct) : null,
       saldo,
       totalInvestasi,

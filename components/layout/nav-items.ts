@@ -1,5 +1,4 @@
 import {
-  BadgePercent,
   Banknote,
   Boxes,
   Car,
@@ -56,7 +55,6 @@ export const NAV_BACKOFFICE: NavGroup[] = [
     label: 'Investasi',
     items: [
       { label: 'Investor', href: '/master/investor', icon: Users, matchPrefix: true },
-      { label: 'Golongan Investasi', href: '/master/golongan', icon: BadgePercent },
       { label: 'Akad Investor', href: '/transaksi/akad', icon: Handshake },
     ],
   },

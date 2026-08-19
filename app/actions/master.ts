@@ -5,7 +5,6 @@ import { z } from 'zod'
 import { jalankan, cek, type AksiHasil } from './_helper'
 import {
   customerSchema,
-  golonganSchema,
   investorSchema,
   mobilSchema,
   salesSchema,
@@ -160,27 +159,6 @@ export async function catatPenarikan(input: unknown) {
     revalidatePath('/dashboard')
   }
   return res
-}
-
-/* ------------------------------ Golongan ----------------------------- */
-
-export async function simpanGolongan(input: unknown) {
-  return simpan('investment_tiers', golonganSchema, input, ['/master/golongan'])
-}
-
-export async function hapusGolongan(id: string) {
-  const cekPakai = await jalankan(async (db) => {
-    const r = await db.from('investor_contracts').select('id').eq('tier_id', id).limit(1)
-    return r.data?.length ?? 0
-  })
-  if (!cekPakai.ok) return cekPakai
-  if ((cekPakai.data ?? 0) > 0) {
-    return {
-      ok: false as const,
-      error: 'Golongan ini sudah dipakai di akad. Nonaktifkan saja, jangan dihapus.',
-    }
-  }
-  return hapus('investment_tiers', id, ['/master/golongan'])
 }
 
 /* --------------------- Customer / Sales / Supplier / Vendor ---------------------- */

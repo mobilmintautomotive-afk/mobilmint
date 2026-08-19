@@ -28,7 +28,7 @@ declare
   t text;
 begin
   foreach t in array array[
-    'suppliers','vendors','customers','sales_persons','investment_tiers',
+    'suppliers','vendors','customers','sales_persons',
     'investors','purchases','repairs','car_sales','operational_expenses',
     'profit_sharings','app_settings'
   ]

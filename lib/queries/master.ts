@@ -5,7 +5,6 @@ import type {
   Customer,
   Investor,
   InvestorBalance,
-  InvestmentTier,
   SalesPerson,
   Supplier,
   Vendor,
@@ -103,7 +102,7 @@ export type BarisInvestor = Investor & {
   total_investasi: number
   total_bagi_hasil: number
   modal_berjalan: number
-  golongan: string | null
+  nisbah_aktif: number | null
 }
 
 export async function getDaftarInvestor() {
@@ -113,7 +112,7 @@ export async function getDaftarInvestor() {
       db.from('v_investor_balance').select('*'),
       db
         .from('investor_contracts')
-        .select('investor_id, tanggal_akad, status, investment_tiers(nama_golongan)')
+        .select('investor_id, nisbah_investor_pct, tanggal_akad, status')
         .eq('status', 'AKTIF')
         .order('tanggal_akad', { ascending: false }),
     ])
@@ -132,11 +131,10 @@ export async function getDaftarInvestor() {
       })
     }
 
-    const golonganMap = new Map<string, string>()
+    // Akad aktif terbaru per investor — kesepakatan yang sedang berlaku.
+    const nisbahMap = new Map<string, number>()
     for (const k of (kontrak.data ?? []) as any[]) {
-      if (!golonganMap.has(k.investor_id)) {
-        golonganMap.set(k.investor_id, k.investment_tiers?.nama_golongan ?? '-')
-      }
+      if (!nisbahMap.has(k.investor_id)) nisbahMap.set(k.investor_id, num(k.nisbah_investor_pct))
     }
 
     return (inv.data as Investor[]).map((i) => {
@@ -147,7 +145,7 @@ export async function getDaftarInvestor() {
         total_investasi: b?.total_investasi ?? 0,
         total_bagi_hasil: b?.total_bagi_hasil ?? 0,
         modal_berjalan: b?.modal_berjalan ?? 0,
-        golongan: golonganMap.get(i.id) ?? null,
+        nisbah_aktif: nisbahMap.get(i.id) ?? null,
       }
     })
   }, [])
@@ -156,7 +154,6 @@ export async function getDaftarInvestor() {
 /** Investor + saldo + nisbah aktif, dipakai dropdown & panel Sumber Dana pembelian. */
 export type InvestorPendanaan = InvestorBalance & {
   nisbah_investor_pct: number | null
-  golongan: string | null
 }
 
 export async function getSaldoInvestor() {
@@ -166,7 +163,7 @@ export async function getSaldoInvestor() {
       db.from('investors').select('id, is_active'),
       db
         .from('investor_contracts')
-        .select('investor_id, nisbah_investor_pct, tanggal_akad, investment_tiers(nama_golongan)')
+        .select('investor_id, nisbah_investor_pct, tanggal_akad')
         .eq('status', 'AKTIF')
         .order('tanggal_akad', { ascending: false }),
     ])
@@ -178,12 +175,8 @@ export async function getSaldoInvestor() {
     // Akad aktif terbaru per investor — nisbah yang dipakai server saat
     // allocate_purchase_funding menyimpan snapshot (lihat migration 000200).
     const nisbahMap = new Map<string, number>()
-    const golonganMap = new Map<string, string>()
     for (const k of (kontrak.data ?? []) as any[]) {
-      if (!nisbahMap.has(k.investor_id)) {
-        nisbahMap.set(k.investor_id, num(k.nisbah_investor_pct))
-        golonganMap.set(k.investor_id, k.investment_tiers?.nama_golongan ?? '-')
-      }
+      if (!nisbahMap.has(k.investor_id)) nisbahMap.set(k.investor_id, num(k.nisbah_investor_pct))
     }
 
     return ((bal.data ?? []) as any[])
@@ -197,7 +190,6 @@ export async function getSaldoInvestor() {
         modal_berjalan: num(b.modal_berjalan),
         total_penarikan: num(b.total_penarikan),
         nisbah_investor_pct: nisbahMap.get(b.investor_id) ?? null,
-        golongan: golonganMap.get(b.investor_id) ?? null,
       }))
       .sort((a, z) => z.saldo - a.saldo)
   }, [])
@@ -211,7 +203,7 @@ export async function getDetailInvestor(id: string) {
         db.from('v_investor_balance').select('*').eq('investor_id', id).maybeSingle(),
         db
           .from('investor_contracts')
-          .select('*, investment_tiers(nama_golongan)')
+          .select('*')
           .eq('investor_id', id)
           .order('tanggal_akad', { ascending: false }),
         db
@@ -254,34 +246,6 @@ export async function getDetailInvestor(id: string) {
       fundings: [] as any[],
     },
   )
-}
-
-/* ------------------------------ Golongan ----------------------------- */
-
-export type BarisGolongan = InvestmentTier & { jumlah_investor: number }
-
-export async function getDaftarGolongan() {
-  return aman<BarisGolongan[]>(async (db) => {
-    const [tiers, kontrak] = await Promise.all([
-      db.from('investment_tiers').select('*').order('nilai_investasi'),
-      db.from('investor_contracts').select('tier_id, investor_id, status').eq('status', 'AKTIF'),
-    ])
-    if (tiers.error) throw new Error(tiers.error.message)
-
-    const per = new Map<string, Set<string>>()
-    for (const k of (kontrak.data ?? []) as any[]) {
-      if (!per.has(k.tier_id)) per.set(k.tier_id, new Set())
-      per.get(k.tier_id)!.add(k.investor_id)
-    }
-
-    return (tiers.data as any[]).map((t) => ({
-      ...t,
-      nilai_investasi: num(t.nilai_investasi),
-      nisbah_investor_pct: num(t.nisbah_investor_pct),
-      nisbah_pengelola_pct: num(t.nisbah_pengelola_pct),
-      jumlah_investor: per.get(t.id)?.size ?? 0,
-    }))
-  }, [])
 }
 
 /* -------------------- Customer / Sales / Supplier / Vendor -------------------- */
@@ -366,9 +330,8 @@ export async function getDaftarVendor() {
 export async function getOpsiDropdown() {
   return aman(
     async (db) => {
-      const [inv, tier, sup, ven, sls, cus] = await Promise.all([
+      const [inv, sup, ven, sls, cus] = await Promise.all([
         db.from('investors').select('id, nama, is_active').eq('is_active', true).order('nama'),
-        db.from('investment_tiers').select('*').eq('is_active', true).order('nilai_investasi'),
         db.from('suppliers').select('id, nama, tipe_supplier').eq('is_active', true).order('nama'),
         db.from('vendors').select('id, nama, tipe_vendor').eq('is_active', true).order('nama'),
         db.from('sales_persons').select('id, nama, komisi_default').eq('is_active', true).order('nama'),
@@ -376,21 +339,14 @@ export async function getOpsiDropdown() {
       ])
       return {
         investors: (inv.data ?? []) as any[],
-        tiers: ((tier.data ?? []) as any[]).map((t) => ({
-          ...t,
-          nilai_investasi: num(t.nilai_investasi),
-          nisbah_investor_pct: num(t.nisbah_investor_pct),
-          nisbah_pengelola_pct: num(t.nisbah_pengelola_pct),
-        })),
         suppliers: (sup.data ?? []) as any[],
         vendors: (ven.data ?? []) as any[],
         sales: ((sls.data ?? []) as any[]).map((s) => ({ ...s, komisi_default: num(s.komisi_default) })),
         customers: (cus.data ?? []) as any[],
       }
     },
-    { investors: [], tiers: [], suppliers: [], vendors: [], sales: [], customers: [] } as {
+    { investors: [], suppliers: [], vendors: [], sales: [], customers: [] } as {
       investors: any[]
-      tiers: any[]
       suppliers: any[]
       vendors: any[]
       sales: any[]

@@ -6,9 +6,13 @@
 -- (allocate_purchase_funding / process_profit_sharing) supaya seed
 -- selalu konsisten dengan logika aplikasi.
 --
--- Model bisnis yang dipakai (per keputusan 2026-07-25):
--- - Golongan investasi berbasis rentang nilai setoran: 0-200jt (30%),
---   200-500jt (40%), >500jt (50%).
+-- Model bisnis yang dipakai (per keputusan 2026-08-19):
+-- - TIDAK ADA golongan/tier investasi bersama. Nisbah & nilai investasi
+--   adalah kesepakatan PER INDIVIDU investor (kolomnya langsung di
+--   investor_contracts), dengan tanggal_akad sebagai tanggal berlaku
+--   kesepakatan itu. Kalau kesepakatan berubah (mis. investor menambah
+--   investasi dengan nisbah baru), cukup buat akad baru — bukan mengubah
+--   satu tabel tier bersama yang dipakai banyak investor sekaligus.
 -- - Setiap unit di seed ini SENGAJA dibiayai 1 investor saja (biar gampang
 --   dicek). Fitur "Urun Dana" (multi-investor dengan nisbah sama) tetap
 --   ada di aplikasi, cuma tidak dipakai di data simulasi ini.
@@ -26,7 +30,7 @@ truncate table
   cash_ledger, bank_accounts,
   profit_sharing_details, profit_sharings, car_sales, repairs, car_fundings,
   purchases, investor_ledger, investor_contracts, cars, customers,
-  sales_persons, vendors, suppliers, investment_tiers, profiles, investors,
+  sales_persons, vendors, suppliers, profiles, investors,
   operational_expenses, company_assets
 restart identity cascade;
 
@@ -50,16 +54,9 @@ select catat_mutasi_kas(
 );
 
 -- ---------------------------------------------------------------------
--- Golongan Investasi — berbasis rentang nilai setoran
--- ---------------------------------------------------------------------
-insert into investment_tiers (id, nama_golongan, nilai_investasi, nisbah_investor_pct, nisbah_pengelola_pct, tenor_bulan, deskripsi) values
-  ('11111111-0000-4000-8000-000000000001', '0 - 200 Juta',   200000000,  30, 70, 12, 'Setoran sampai dengan Rp 200 juta'),
-  ('11111111-0000-4000-8000-000000000002', '200 - 500 Juta', 500000000,  40, 60, 12, 'Setoran Rp 200 - 500 juta'),
-  ('11111111-0000-4000-8000-000000000003', '> 500 Juta',     1000000000, 50, 50, 24, 'Setoran di atas Rp 500 juta');
-
--- ---------------------------------------------------------------------
 -- Investor
--- Andi -> golongan 0-200jt | Siti -> 200-500jt | Budi & Rina -> >500jt
+-- Nisbah per kesepakatan individu (bukan golongan bersama):
+-- Andi 30% | Siti 40% | Budi & Rina 50% (sengaja sama, buat contoh urun dana)
 -- ---------------------------------------------------------------------
 insert into investors (id, nama, alamat, no_tlp, email, nama_bank, no_rekening, atas_nama_rekening) values
   ('22222222-0000-4000-8000-000000000001', 'Budi Santoso',  'Jl. Melati No. 12, Bandung',    '081234567801', 'budi@example.com',  'BCA',     '1234567801', 'Budi Santoso'),
@@ -107,32 +104,31 @@ declare
 begin
   for r in
     select * from (values
-      ('22222222-0000-4000-8000-000000000003'::uuid, '11111111-0000-4000-8000-000000000001'::uuid, date '2026-01-10'), -- Andi, 0-200jt
-      ('22222222-0000-4000-8000-000000000002'::uuid, '11111111-0000-4000-8000-000000000002'::uuid, date '2026-01-15'), -- Siti, 200-500jt
-      ('22222222-0000-4000-8000-000000000001'::uuid, '11111111-0000-4000-8000-000000000003'::uuid, date '2026-01-20'), -- Budi, >500jt
-      ('22222222-0000-4000-8000-000000000004'::uuid, '11111111-0000-4000-8000-000000000003'::uuid, date '2026-02-02')  -- Rina, >500jt
-    ) as t(investor_id, tier_id, tanggal)
+      ('22222222-0000-4000-8000-000000000003'::uuid, 200000000::numeric,  30::numeric, 70::numeric, 12, date '2026-01-10'), -- Andi
+      ('22222222-0000-4000-8000-000000000002'::uuid, 500000000::numeric,  40::numeric, 60::numeric, 12, date '2026-01-15'), -- Siti
+      ('22222222-0000-4000-8000-000000000001'::uuid, 1000000000::numeric, 50::numeric, 50::numeric, 24, date '2026-01-20'), -- Budi
+      ('22222222-0000-4000-8000-000000000004'::uuid, 1000000000::numeric, 50::numeric, 50::numeric, 24, date '2026-02-02')  -- Rina
+    ) as t(investor_id, nilai_investasi, nisbah_investor_pct, nisbah_pengelola_pct, tenor_bulan, tanggal)
   loop
     v_no := fn_next_doc_number('AKD', r.tanggal);
 
     insert into investor_contracts (
-      no_akad, investor_id, tier_id, nilai_investasi,
+      no_akad, investor_id, nilai_investasi,
       nisbah_investor_pct, nisbah_pengelola_pct, tenor_bulan,
       tanggal_akad, tanggal_dana_diterima, jumlah_diterima, status
+    ) values (
+      v_no, r.investor_id, r.nilai_investasi,
+      r.nisbah_investor_pct, r.nisbah_pengelola_pct, r.tenor_bulan,
+      r.tanggal, r.tanggal + 2, r.nilai_investasi, 'AKTIF'
     )
-    select
-      v_no, r.investor_id, t.id, t.nilai_investasi,
-      t.nisbah_investor_pct, t.nisbah_pengelola_pct, t.tenor_bulan,
-      r.tanggal, r.tanggal + 2, t.nilai_investasi, 'AKTIF'
-    from investment_tiers t where t.id = r.tier_id
     returning id into v_cid;
 
     insert into investor_ledger (investor_id, contract_id, tipe, amount, keterangan, ref_table, ref_id, tanggal)
-    select r.investor_id, v_cid, 'SETORAN', c.nilai_investasi,
-           'Setoran investasi golongan ' || t.nama_golongan,
-           'investor_contracts', v_cid, c.tanggal_dana_diterima
-    from investor_contracts c join investment_tiers t on t.id = c.tier_id
-    where c.id = v_cid;
+    values (
+      r.investor_id, v_cid, 'SETORAN', r.nilai_investasi,
+      'Setoran investasi — nisbah ' || r.nisbah_investor_pct || '%',
+      'investor_contracts', v_cid, r.tanggal + 2
+    );
   end loop;
 end $$;
 
@@ -157,7 +153,7 @@ declare
 begin
   -- =========================================================
   -- UNIT 1 — Toyota Avanza 2019 : siklus penuh sampai SELESAI
-  -- Dibiayai Andi sendirian (golongan 0-200jt, nisbah 30%)
+  -- Dibiayai Andi sendirian (nisbah 30%)
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status, catatan)
   values ('Toyota','Avanza G',2019,'Silver','B 1234 XYZ','MHKM1BA3JKJ001234','1NRF012345','MANUAL',68000, date '2027-03-14','DIBELI','Unit pertama, kondisi mesin sehat')
@@ -212,7 +208,7 @@ begin
   -- =========================================================
   -- UNIT 2 — Mitsubishi Xpander 2022 : SELESAI, bagi hasil OTOMATIS
   -- tapi dana BELUM dicairkan (demo tab "Menunggu Dicairkan")
-  -- Dibiayai Budi sendirian (golongan >500jt, nisbah 50%)
+  -- Dibiayai Budi sendirian (nisbah 50%)
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status)
   values ('Mitsubishi','Xpander Ultimate',2022,'Putih','B 8899 KLM','MMBJ1KA5NHK008899','4A91008899','MATIC',31000, date '2027-05-20','DIBELI')
@@ -251,7 +247,7 @@ begin
 
   -- =========================================================
   -- UNIT 3 — Honda Brio 2020 : READY_STOCK
-  -- Dibiayai Siti sendirian (golongan 200-500jt, nisbah 40%)
+  -- Dibiayai Siti sendirian (nisbah 40%)
   -- Contoh "Ambil dari Modal Investor" saat perbaikan (checkbox PRD B3)
   -- =========================================================
   insert into cars (merek, tipe, tahun, warna, no_polisi, no_rangka, no_mesin, transmisi, kilometer, tanggal_pajak, status)

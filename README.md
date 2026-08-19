@@ -60,8 +60,10 @@ perlu disentuh, lalu hapus komponen `RoleSwitcher` dari navbar.
 ## Alur kerja aplikasi
 
 ```
-Master (golongan, investor, supplier, vendor, sales, customer)
-  → Akad Investor        → konfirmasi dana → saldo investor naik
+Master (investor, supplier, vendor, sales, customer)
+  → Akad Investor        → nilai investasi & nisbah sesuai kesepakatan
+                           per investor (bukan golongan/tier bersama)
+                         → konfirmasi dana → saldo investor naik
   → Pembelian Mobil      → data unit diinput di sini (bukan Master Mobil
                            terpisah) + alokasi modal proporsional
                          → saldo turun, unit DIBELI
@@ -89,7 +91,7 @@ di laporan laba rugi.
    lewat function database (`allocate_purchase_funding`, `process_profit_sharing`)
    supaya tidak pernah ada entri ledger setengah jadi.
 4. **Snapshot, bukan join.** Nilai investasi, nisbah, dan HPP disalin ke tabel transaksi
-   saat transaksi dibuat — mengubah golongan tidak mengubah transaksi lama.
+   saat transaksi dibuat — akad baru dengan kesepakatan berbeda tidak mengubah transaksi lama.
 5. **Angka minus tidak di-clamp.** Unit rugi menghasilkan bagi hasil negatif dan modal
    kembali yang lebih kecil dari modal awal.
 6. **Bagi hasil tidak bisa dihapus**, hanya dibatalkan lewat entri ledger pembalik

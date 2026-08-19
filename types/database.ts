@@ -52,18 +52,6 @@ export interface Profile {
   created_at: string
 }
 
-export interface InvestmentTier {
-  id: string
-  nama_golongan: string
-  nilai_investasi: number
-  nisbah_investor_pct: number
-  nisbah_pengelola_pct: number
-  tenor_bulan: number | null
-  deskripsi: string | null
-  is_active: boolean
-  created_at: string
-}
-
 export interface Supplier {
   id: string
   nama: string
@@ -147,7 +135,6 @@ export interface InvestorContract {
   id: string
   no_akad: string
   investor_id: string
-  tier_id: string
   nilai_investasi: number
   nisbah_investor_pct: number
   nisbah_pengelola_pct: number
