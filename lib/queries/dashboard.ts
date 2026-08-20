@@ -308,6 +308,28 @@ export async function getLaporanPerUnit(rentang: Rentang) {
   }, [] as any[])
 }
 
+/** Daftar tahun yang punya data transaksi — dipakai isi dropdown slicer tahun. */
+export async function getTahunTersedia() {
+  return aman<number[]>(async (db) => {
+    const [beli, jual] = await Promise.all([
+      db.from('purchases').select('tanggal_beli').order('tanggal_beli', { ascending: true }).limit(1),
+      db.from('car_sales').select('tanggal_jual').order('tanggal_jual', { ascending: false }).limit(1),
+    ])
+    const tahunSekarang = new Date().getFullYear()
+    const tahunAwal = beli.data?.[0]?.tanggal_beli
+      ? Number(String(beli.data[0].tanggal_beli).slice(0, 4))
+      : tahunSekarang
+    const tahunAkhir = jual.data?.[0]?.tanggal_jual
+      ? Number(String(jual.data[0].tanggal_jual).slice(0, 4))
+      : tahunSekarang
+    const dari = Math.min(tahunAwal, tahunSekarang)
+    const sampai = Math.max(tahunAkhir, tahunSekarang)
+    const tahun: number[] = []
+    for (let y = sampai; y >= dari; y--) tahun.push(y)
+    return tahun
+  }, [new Date().getFullYear()])
+}
+
 /** Total biaya operasional pada rentang tanggal bebas — dipakai hitung delta. */
 export async function getTotalBiaya(from: string, to: string) {
   const res = await aman<number>(async (db) => {

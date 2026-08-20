@@ -7,7 +7,7 @@ import { MetricCard } from '@/components/shared/metric-card'
 import { Money } from '@/components/shared/money'
 import { Card, CardDescription, CardTitle } from '@/components/ui/primitives'
 import { OpexTable } from '@/components/laporan/opex-table'
-import { getBiayaOperasional, getTotalBiaya } from '@/lib/queries/dashboard'
+import { getBiayaOperasional, getTahunTersedia, getTotalBiaya } from '@/lib/queries/dashboard'
 import { getCurrentRole, canWrite } from '@/lib/dev-role'
 import { resolvePeriode, periodeSebelumnya, bulanDalamRentang } from '@/lib/periode'
 import { hitungDelta } from '@/lib/calc'
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: 'Biaya Operasional' }
 export default async function BiayaOperasionalPage({
   searchParams,
 }: {
-  searchParams: { periode?: string; from?: string; to?: string }
+  searchParams: { periode?: string; from?: string; to?: string; year?: string }
 }) {
   const role = await getCurrentRole()
   if (role === 'investor') redirect('/investor')
@@ -27,10 +27,11 @@ export default async function BiayaOperasionalPage({
   const rentang = resolvePeriode(searchParams)
   const sebelum = periodeSebelumnya(rentang)
 
-  const [{ data: rows, error }, totalLalu, bolehTulis] = await Promise.all([
+  const [{ data: rows, error }, totalLalu, bolehTulis, { data: tahunTersedia }] = await Promise.all([
     getBiayaOperasional(rentang),
     getTotalBiaya(sebelum.from, sebelum.to),
     canWrite(),
+    getTahunTersedia(),
   ])
 
   const total = rows.reduce((s: number, r: any) => s + r.nominal, 0)
@@ -55,7 +56,7 @@ export default async function BiayaOperasionalPage({
         title="Biaya Operasional"
         description="Biaya jalannya usaha di luar unit mobil — gaji, sewa showroom, listrik, dan marketing. Biaya perbaikan unit dicatat terpisah di menu Perbaikan karena masuk HPP."
         breadcrumb={[{ label: 'Operasional' }, { label: 'Biaya Operasional' }]}
-        action={<PeriodFilter />}
+        action={<PeriodFilter years={tahunTersedia} />}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">

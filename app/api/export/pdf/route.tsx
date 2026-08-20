@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
       periode: sp.get('periode') ?? undefined,
       from: sp.get('from') ?? undefined,
       to: sp.get('to') ?? undefined,
+      year: sp.get('year') ?? undefined,
     })
 
     const [dash, perUnit] = await Promise.all([

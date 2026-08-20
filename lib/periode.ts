@@ -29,6 +29,7 @@ export function resolvePeriode(params?: {
   periode?: string
   from?: string
   to?: string
+  year?: string
 }): Rentang {
   const hariIni = new Date(`${todayJakarta()}T00:00:00`)
   const preset = (params?.periode as PeriodePreset) || 'tahun-ini'
@@ -39,6 +40,16 @@ export function resolvePeriode(params?: {
       from: params.from,
       to: params.to,
       label: 'Periode custom',
+    }
+  }
+
+  if (preset === 'tahun') {
+    const y = Number(params?.year) || hariIni.getFullYear()
+    return {
+      preset: 'tahun',
+      from: `${y}-01-01`,
+      to: `${y}-12-31`,
+      label: `Tahun ${y}`,
     }
   }
 

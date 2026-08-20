@@ -22,7 +22,7 @@ import { SalesTrendChart } from '@/components/charts/sales-trend-chart'
 import { WaterfallChart } from '@/components/charts/waterfall-chart'
 import { Card, CardTitle } from '@/components/ui/primitives'
 import { Button } from '@/components/ui/button'
-import { getDataDashboard } from '@/lib/queries/dashboard'
+import { getDataDashboard, getTahunTersedia } from '@/lib/queries/dashboard'
 import { getCurrentRole } from '@/lib/dev-role'
 import { resolvePeriode } from '@/lib/periode'
 import { formatTanggal } from '@/lib/format'
@@ -32,13 +32,16 @@ export const metadata: Metadata = { title: 'Dashboard' }
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { periode?: string; from?: string; to?: string }
+  searchParams: { periode?: string; from?: string; to?: string; year?: string }
 }) {
   const role = await getCurrentRole()
   if (role === 'investor') redirect('/investor')
 
   const rentang = resolvePeriode(searchParams)
-  const { data, error } = await getDataDashboard(rentang)
+  const [{ data, error }, { data: tahunTersedia }] = await Promise.all([
+    getDataDashboard(rentang),
+    getTahunTersedia(),
+  ])
   const r = data.ringkasan
 
   return (
@@ -46,7 +49,7 @@ export default async function DashboardPage({
       <PageHeader
         title="Dashboard"
         description={`Ringkasan performa bisnis — ${rentang.label.toLowerCase()}.`}
-        action={<PeriodFilter />}
+        action={<PeriodFilter years={tahunTersedia} />}
       />
 
       {error ? (

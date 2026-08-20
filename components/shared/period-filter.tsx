@@ -11,7 +11,14 @@ import { Input } from '@/components/ui/input'
  * Filter periode global (PRD 02 bagian C1). Nilainya disimpan di URL
  * supaya semua kartu & chart di halaman ikut berubah lewat Server Component.
  */
-export function PeriodFilter({ className }: { className?: string }) {
+export function PeriodFilter({
+  className,
+  years,
+}: {
+  className?: string
+  /** Daftar tahun yang punya data, untuk isi dropdown preset "Pilih Tahun". */
+  years?: number[]
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -20,6 +27,9 @@ export function PeriodFilter({ className }: { className?: string }) {
   const aktif = (params.get('periode') as PeriodePreset) || 'tahun-ini'
   const from = params.get('from') ?? ''
   const to = params.get('to') ?? ''
+  const tahunSekarang = new Date().getFullYear()
+  const tahunOptions = years && years.length > 0 ? years : [tahunSekarang]
+  const year = params.get('year') ?? String(tahunOptions[0])
 
   function set(next: Record<string, string | null>) {
     const sp = new URLSearchParams(params.toString())
@@ -40,8 +50,10 @@ export function PeriodFilter({ className }: { className?: string }) {
             onClick={() =>
               set(
                 p.value === 'custom'
-                  ? { periode: 'custom' }
-                  : { periode: p.value, from: null, to: null },
+                  ? { periode: 'custom', year: null }
+                  : p.value === 'tahun'
+                    ? { periode: 'tahun', from: null, to: null, year }
+                    : { periode: p.value, from: null, to: null, year: null },
               )
             }
             className={cn(
@@ -55,6 +67,21 @@ export function PeriodFilter({ className }: { className?: string }) {
           </button>
         ))}
       </div>
+
+      {aktif === 'tahun' ? (
+        <select
+          value={year}
+          onChange={(e) => set({ year: e.target.value })}
+          aria-label="Pilih tahun"
+          className="h-9 rounded-[10px] border border-line-strong bg-surface px-3 text-body text-ink transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+        >
+          {tahunOptions.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+      ) : null}
 
       {aktif === 'custom' ? (
         <div className="flex items-center gap-2">

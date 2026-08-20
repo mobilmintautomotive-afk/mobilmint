@@ -224,12 +224,13 @@ export const CHART_COLORS = {
   grid: '#e5e7eb',
 } as const
 
-export type PeriodePreset = 'bulan-ini' | '3-bulan' | '6-bulan' | 'tahun-ini' | 'custom'
+export type PeriodePreset = 'bulan-ini' | '3-bulan' | '6-bulan' | 'tahun-ini' | 'tahun' | 'custom'
 
 export const PERIODE_PRESET: { value: PeriodePreset; label: string }[] = [
   { value: 'bulan-ini', label: 'Bulan Ini' },
   { value: '3-bulan', label: '3 Bulan' },
   { value: '6-bulan', label: '6 Bulan' },
   { value: 'tahun-ini', label: 'Tahun Ini' },
+  { value: 'tahun', label: 'Pilih Tahun' },
   { value: 'custom', label: 'Custom' },
 ]

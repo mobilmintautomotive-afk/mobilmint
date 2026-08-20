@@ -14,6 +14,7 @@ import {
   getBiayaOperasional,
   getDataDashboard,
   getLaporanPerUnit,
+  getTahunTersedia,
 } from '@/lib/queries/dashboard'
 import { getCurrentRole, canWrite } from '@/lib/dev-role'
 import { resolvePeriode } from '@/lib/periode'
@@ -24,17 +25,18 @@ export const metadata: Metadata = { title: 'Laporan Laba Rugi' }
 export default async function LaporanPage({
   searchParams,
 }: {
-  searchParams: { periode?: string; from?: string; to?: string }
+  searchParams: { periode?: string; from?: string; to?: string; year?: string }
 }) {
   const role = await getCurrentRole()
   if (role === 'investor') redirect('/investor')
 
   const rentang = resolvePeriode(searchParams)
-  const [dash, perUnit, opex, bolehTulis] = await Promise.all([
+  const [dash, perUnit, opex, bolehTulis, { data: tahunTersedia }] = await Promise.all([
     getDataDashboard(rentang),
     getLaporanPerUnit(rentang),
     getBiayaOperasional(rentang),
     canWrite(),
+    getTahunTersedia(),
   ])
 
   const lr = dash.data.labaRugi
@@ -43,6 +45,7 @@ export default async function LaporanPage({
   const periodeQuery = new URLSearchParams({
     periode: rentang.preset,
     ...(rentang.preset === 'custom' ? { from: rentang.from, to: rentang.to } : {}),
+    ...(rentang.preset === 'tahun' ? { year: String(rentang.from.slice(0, 4)) } : {}),
   }).toString()
 
   return (
@@ -62,7 +65,7 @@ export default async function LaporanPage({
       />
 
       <div className="mb-5">
-        <PeriodFilter />
+        <PeriodFilter years={tahunTersedia} />
       </div>
 
       {dash.error ? (
