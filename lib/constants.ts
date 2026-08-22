@@ -92,14 +92,13 @@ export const SUPPLIER_TYPE_LABEL: Record<SupplierType, string> = {
 }
 
 /** Daftar umum, bukan enum tertutup — tipe_vendor cuma kolom teks, jadi form-nya bisa "Tambah Kategori". */
-export const VENDOR_TYPE = ['BENGKEL', 'SALON', 'SPARE_PART', 'BODY_REPAIR', 'LAINNYA'] as const
+export const VENDOR_TYPE = ['BENGKEL', 'SALON', 'SPARE_PART', 'BODY_REPAIR'] as const
 export type VendorType = (typeof VENDOR_TYPE)[number]
 export const VENDOR_TYPE_LABEL: Record<VendorType, string> = {
   BENGKEL: 'Bengkel',
   SALON: 'Salon',
   SPARE_PART: 'Spare Part',
   BODY_REPAIR: 'Body Repair',
-  LAINNYA: 'Lainnya',
 }
 
 export const LEDGER_TYPE = [
@@ -129,14 +128,7 @@ export const REPAIR_STATUS_LABEL: Record<RepairStatus, string> = {
   SELESAI: 'Selesai',
 }
 
-export const JENIS_PERBAIKAN = [
-  'Mesin',
-  'Body',
-  'Interior',
-  'Kaki-kaki',
-  'Salon',
-  'Lainnya',
-] as const
+export const JENIS_PERBAIKAN = ['Mesin', 'Body', 'Interior', 'Kaki-kaki', 'Salon'] as const
 
 export const PAYMENT_METHOD = ['TUNAI', 'TRANSFER', 'KREDIT'] as const
 export type PaymentMethod = (typeof PAYMENT_METHOD)[number]
@@ -160,15 +152,9 @@ export const USER_ROLE_LABEL: Record<UserRole, string> = {
   investor: 'Investor',
 }
 
-export const KATEGORI_OPEX = ['Gaji', 'Sewa', 'Listrik', 'Marketing', 'Lainnya'] as const
+export const KATEGORI_OPEX = ['Gaji', 'Sewa', 'Listrik', 'Marketing'] as const
 
-export const KATEGORI_ASET = [
-  'Peralatan Kantor',
-  'Kendaraan Operasional',
-  'Elektronik',
-  'Furnitur',
-  'Lainnya',
-] as const
+export const KATEGORI_ASET = ['Peralatan Kantor', 'Kendaraan Operasional', 'Elektronik', 'Furnitur'] as const
 
 export const ASSET_STATUS = ['AKTIF', 'DIJUAL', 'DIHAPUS'] as const
 export type AssetStatus = (typeof ASSET_STATUS)[number]

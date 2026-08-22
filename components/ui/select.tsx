@@ -151,8 +151,9 @@ export function SearchableSelect({
     : options
 
   const qTrim = q.trim()
-  const bisaBuatBaru =
-    creatable && qTrim !== '' && !options.some((o) => o.label.toLowerCase() === qTrim.toLowerCase())
+  const cocokPersis =
+    qTrim !== '' && options.some((o) => o.label.toLowerCase() === qTrim.toLowerCase())
+  const bisaBuatBaru = creatable && qTrim !== '' && !cocokPersis
 
   return (
     <div ref={rootRef} className={cn('relative', className)}>
@@ -184,54 +185,65 @@ export function SearchableSelect({
           </div>
 
           <div className="mm-scroll max-h-60 overflow-y-auto p-1">
-            {filtered.length === 0 && !bisaBuatBaru ? (
+            {filtered.length === 0 ? (
               <p className="px-3 py-4 text-center text-label text-ink-muted">{emptyText}</p>
             ) : (
-              <>
-                {filtered.map((o) => (
-                  <button
-                    key={o.value}
-                    type="button"
-                    disabled={o.disabled}
-                    onClick={() => {
-                      onChange(o.value)
-                      setOpen(false)
-                      setQ('')
-                    }}
-                    className={cn(
-                      'flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-left text-body transition-colors hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-50',
-                      o.value === value ? 'bg-accent-soft text-accent' : 'text-ink',
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate">{o.label}</span>
-                      {o.keterangan ? (
-                        <span className="block truncate text-label text-ink-muted">
-                          {o.keterangan}
-                        </span>
-                      ) : null}
-                    </span>
-                    {o.value === value ? <Check className="size-4 shrink-0" /> : null}
-                  </button>
-                ))}
-
-                {bisaBuatBaru ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(qTrim)
-                      setOpen(false)
-                      setQ('')
-                    }}
-                    className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-body font-medium text-accent transition-colors hover:bg-accent-soft"
-                  >
-                    <Plus className="size-4 shrink-0" />
-                    {createLabel(qTrim)}
-                  </button>
-                ) : null}
-              </>
+              filtered.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  disabled={o.disabled}
+                  onClick={() => {
+                    onChange(o.value)
+                    setOpen(false)
+                    setQ('')
+                  }}
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-left text-body transition-colors hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-50',
+                    o.value === value ? 'bg-accent-soft text-accent' : 'text-ink',
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate">{o.label}</span>
+                    {o.keterangan ? (
+                      <span className="block truncate text-label text-ink-muted">
+                        {o.keterangan}
+                      </span>
+                    ) : null}
+                  </span>
+                  {o.value === value ? <Check className="size-4 shrink-0" /> : null}
+                </button>
+              ))
             )}
           </div>
+
+          {/*
+            Baris "Tambah Kategori" selalu tampil di paling bawah saat creatable
+            (bukan cuma muncul setelah ketik teks yang belum ada) — supaya
+            fiturnya kelihatan tanpa harus tahu dulu bahwa dropdownnya bisa
+            diketik bebas.
+          */}
+          {creatable && !cocokPersis ? (
+            <button
+              type="button"
+              disabled={!bisaBuatBaru}
+              onClick={() => {
+                if (!bisaBuatBaru) return
+                onChange(qTrim)
+                setOpen(false)
+                setQ('')
+              }}
+              className={cn(
+                'flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-body font-medium transition-colors',
+                bisaBuatBaru
+                  ? 'text-accent hover:bg-accent-soft'
+                  : 'cursor-default text-ink-subtle',
+              )}
+            >
+              <Plus className="size-4 shrink-0" />
+              {bisaBuatBaru ? createLabel(qTrim) : 'Ketik nama untuk tambah kategori baru'}
+            </button>
+          ) : null}
 
           {footer ? <div className="border-t border-line p-1">{footer}</div> : null}
         </div>
