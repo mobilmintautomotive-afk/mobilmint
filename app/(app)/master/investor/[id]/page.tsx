@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Banknote, Car, Handshake, PiggyBank, Wallet } from 'lucide-react'
+import { Banknote, Car, Coins, Handshake, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { MetricCard } from '@/components/shared/metric-card'
 import { Money } from '@/components/shared/money'
@@ -64,7 +64,7 @@ export default async function DetailInvestorPage({ params }: { params: { id: str
           label="Total Investasi"
           value={saldo?.total_investasi ?? 0}
           format="money"
-          icon={PiggyBank}
+          icon={Coins}
           subtext="Akumulasi setoran"
         />
         <MetricCard

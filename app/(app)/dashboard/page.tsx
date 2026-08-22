@@ -5,9 +5,9 @@ import {
   Banknote,
   Car,
   Clock,
+  Coins,
   HandCoins,
   PackageCheck,
-  PiggyBank,
   TrendingUp,
   Users,
   Wallet,
@@ -69,7 +69,7 @@ export default async function DashboardPage({
           label="Total Investasi"
           value={r.totalInvestasi}
           format="money"
-          icon={PiggyBank}
+          icon={Coins}
           subtext="Akumulasi akad aktif"
         />
         <MetricCard
