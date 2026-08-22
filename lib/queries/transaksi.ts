@@ -160,7 +160,13 @@ export async function getDaftarPenjualan() {
 
 /* -------------------------------- Booking ------------------------------ */
 
-/** Booking aktif (DP masuk, belum lunas) — unitnya berstatus TERBOOKING. */
+/**
+ * Booking aktif (DP masuk, belum lunas) — unitnya berstatus TERBOOKING.
+ * Ikut membawa HPP + nisbah pendana supaya panel kalkulasi live di form
+ * pelunasan (menu Penjualan, mode "Dari Booking") bisa tetap tampil,
+ * padahal unitnya sendiri sudah tidak muncul lagi di getUnitSiapJual
+ * (yang hanya menampilkan unit berstatus READY_STOCK).
+ */
 export async function getDaftarBooking() {
   return aman(async (db) => {
     const rows = unwrap(
@@ -173,22 +179,51 @@ export async function getDaftarBooking() {
         .order('tanggal_booking', { ascending: false })
         .range(0, LIST_LIMIT - 1),
     ) as any[]
-    return rows.map((r) => ({
-      id: r.id as string,
-      no_booking: r.no_booking as string,
-      car_id: r.car_id as string,
-      unit: r.cars ? `${r.cars.merek} ${r.cars.tipe} ${r.cars.tahun}` : '-',
-      no_polisi: r.cars?.no_polisi ?? null,
-      customer_nama: r.customers?.nama ?? '-',
-      customer_tlp: r.customers?.no_tlp ?? null,
-      sales_nama: r.sales_persons?.nama ?? 'Tanpa sales',
-      tanggal_booking: r.tanggal_booking as string,
-      harga_sepakat: num(r.harga_sepakat),
-      dp_amount: num(r.dp_amount),
-      sisa_pelunasan: num(r.harga_sepakat) - num(r.dp_amount),
-      metode_bayar: r.metode_bayar as string,
-      catatan: r.catatan as string | null,
-    }))
+
+    const carIds = rows.map((r) => r.car_id)
+    const [hppRows, fundings] = await Promise.all([
+      carIds.length
+        ? db.from('v_car_hpp').select('car_id, hpp').in('car_id', carIds)
+        : Promise.resolve({ data: [] as any[] }),
+      carIds.length
+        ? db.from('car_fundings').select('car_id, amount, nisbah_investor_pct, investors(nama)').in('car_id', carIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ])
+
+    const hppPerCar = new Map<string, number>()
+    for (const h of ((hppRows.data ?? []) as any[])) hppPerCar.set(h.car_id, num(h.hpp))
+
+    const fundingPerCar = new Map<string, { total: number; bobot: number; nama: string[] }>()
+    for (const f of ((fundings.data ?? []) as any[])) {
+      const cur = fundingPerCar.get(f.car_id) ?? { total: 0, bobot: 0, nama: [] }
+      cur.total += num(f.amount)
+      cur.bobot += num(f.amount) * num(f.nisbah_investor_pct)
+      if (f.investors?.nama) cur.nama.push(f.investors.nama as string)
+      fundingPerCar.set(f.car_id, cur)
+    }
+
+    return rows.map((r) => {
+      const f = fundingPerCar.get(r.car_id)
+      return {
+        id: r.id as string,
+        no_booking: r.no_booking as string,
+        car_id: r.car_id as string,
+        unit: r.cars ? `${r.cars.merek} ${r.cars.tipe} ${r.cars.tahun}` : '-',
+        no_polisi: r.cars?.no_polisi ?? null,
+        customer_nama: r.customers?.nama ?? '-',
+        customer_tlp: r.customers?.no_tlp ?? null,
+        sales_nama: r.sales_persons?.nama ?? 'Tanpa sales',
+        tanggal_booking: r.tanggal_booking as string,
+        harga_sepakat: num(r.harga_sepakat),
+        dp_amount: num(r.dp_amount),
+        sisa_pelunasan: num(r.harga_sepakat) - num(r.dp_amount),
+        metode_bayar: r.metode_bayar as string,
+        catatan: r.catatan as string | null,
+        hpp: hppPerCar.get(r.car_id) ?? 0,
+        nisbah_investor_pct: f && f.total > 0 ? Number((f.bobot / f.total).toFixed(2)) : 0,
+        investor_nama: f?.nama ?? [],
+      }
+    })
   }, [] as any[])
 }
 

@@ -10,7 +10,6 @@ import { Money } from '@/components/shared/money'
 import { RowActions } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
-import { RincianBiayaRows } from '@/components/forms/rincian-biaya'
 import { Button } from '@/components/ui/button'
 import { Field, Input, MoneyInput, Textarea } from '@/components/ui/input'
 import {
@@ -21,11 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { buatBooking, batalkanBooking, lunasiBooking } from '@/app/actions/bookings'
+import { buatBooking, batalkanBooking } from '@/app/actions/bookings'
 import { simpanCustomer } from '@/app/actions/master'
 import { formatRupiah, formatTanggal, todayJakarta } from '@/lib/format'
 import { PAYMENT_METHOD, PAYMENT_METHOD_LABEL } from '@/lib/constants'
-import type { RincianBiaya } from '@/types/database'
 
 type Booking = {
   id: string
@@ -72,7 +70,6 @@ export function BookingClient({
   sales: { id: string; nama: string; komisi_default: number }[]
 }) {
   const [openBaru, setOpenBaru] = React.useState(false)
-  const [lunasi, setLunasi] = React.useState<Booking | null>(null)
   const { confirm, dialog } = useConfirm()
   const { jalankan } = useAksi()
 
@@ -126,7 +123,7 @@ export function BookingClient({
                 {
                   label: 'Lunasi',
                   icon: CheckCircle2,
-                  onSelect: () => setLunasi(row.original),
+                  href: `/transaksi/penjualan?booking=${row.original.id}`,
                 },
                 {
                   label: 'Batalkan Booking',
@@ -213,7 +210,6 @@ export function BookingClient({
         customers={customers}
         sales={sales}
       />
-      <LunasiFormDialog booking={lunasi} onOpenChange={(v) => !v && setLunasi(null)} />
       {dialog}
     </div>
   )
@@ -437,114 +433,5 @@ function BookingFormDialog({
         </div>
       </FormDialog>
     </>
-  )
-}
-
-/* --------------------------- Form pelunasan -------------------------- */
-
-function LunasiFormDialog({
-  booking,
-  onOpenChange,
-}: {
-  booking: Booking | null
-  onOpenChange: (v: boolean) => void
-}) {
-  const [tanggal, setTanggal] = React.useState(todayJakarta())
-  const [hargaJual, setHargaJual] = React.useState(0)
-  const [komisi, setKomisi] = React.useState(0)
-  const [biaya, setBiaya] = React.useState<RincianBiaya[]>([])
-  const [metode, setMetode] = React.useState<string>('TRANSFER')
-  const [catatan, setCatatan] = React.useState('')
-
-  React.useEffect(() => {
-    if (!booking) return
-    setTanggal(todayJakarta())
-    setHargaJual(booking.harga_sepakat)
-    setKomisi(0)
-    setBiaya([])
-    setMetode(booking.metode_bayar)
-    setCatatan('')
-  }, [booking])
-
-  if (!booking) return null
-
-  return (
-    <FormDialog
-      open={Boolean(booking)}
-      onOpenChange={onOpenChange}
-      size="lg"
-      title={`Lunasi Booking ${booking.no_booking}`}
-      description={`${booking.unit} · DP sudah diterima ${formatRupiah(booking.dp_amount)}. Ini akan tercatat sebagai penjualan, modal & bagi hasil investor langsung diproses otomatis.`}
-      submitLabel="Simpan Pelunasan"
-      successMessage="Pelunasan tersimpan, modal & bagi hasil investor sudah diproses otomatis."
-      disabled={hargaJual <= 0}
-      onSubmit={() =>
-        lunasiBooking({
-          booking_id: booking.id,
-          tanggal_jual: tanggal,
-          harga_jual: hargaJual,
-          komisi_sales: komisi,
-          rincian_biaya_lain: biaya.filter((b) => b.nama && b.nominal > 0),
-          metode_bayar: metode,
-          catatan,
-        })
-      }
-    >
-      <div className="space-y-5 pb-2">
-        <div className="flex items-center justify-between rounded-lg bg-surface-alt px-4 py-3">
-          <span className="text-label text-ink-muted">Sisa pelunasan (perkiraan)</span>
-          <Money
-            value={Math.max(0, hargaJual - booking.dp_amount)}
-            size="lg"
-            className="font-medium"
-          />
-        </div>
-
-        <FormGrid>
-          <Field label="Tanggal Lunas" required htmlFor="tgl-lunas">
-            <Input
-              id="tgl-lunas"
-              type="date"
-              value={tanggal}
-              onChange={(e) => setTanggal(e.target.value)}
-            />
-          </Field>
-
-          <Field label="Metode Pelunasan" htmlFor="metode-lunas">
-            <Select value={metode} onValueChange={setMetode}>
-              <SelectTrigger id="metode-lunas">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHOD.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {PAYMENT_METHOD_LABEL[m]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field label="Harga Jual Final" required hint="Terisi dari harga sepakat, bisa diubah">
-            <MoneyInput value={hargaJual} onChange={setHargaJual} />
-          </Field>
-
-          <Field label="Komisi Sales">
-            <MoneyInput value={komisi} onChange={setKomisi} />
-          </Field>
-        </FormGrid>
-
-        <RincianBiayaRows
-          label="Biaya Penjualan Lain"
-          rows={biaya}
-          onChange={setBiaya}
-          placeholder="Contoh: biaya administrasi, balik nama"
-        />
-
-        <Field label="Catatan" htmlFor="catatan-lunas">
-          <Textarea id="catatan-lunas" value={catatan} onChange={(e) => setCatatan(e.target.value)} />
-        </Field>
-      </div>
-    </FormDialog>
   )
 }

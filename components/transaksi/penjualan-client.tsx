@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { buatPenjualan, batalkanPenjualan } from '@/app/actions/sales'
+import { lunasiBooking } from '@/app/actions/bookings'
 import { simpanCustomer } from '@/app/actions/master'
 import { hitungPenjualan, totalRincian } from '@/lib/calc'
 import { formatPersen, formatRupiah, formatTanggal, todayJakarta } from '@/lib/format'
@@ -58,13 +59,33 @@ type UnitSiapJual = {
   investor_nama: string[]
 }
 
+type Booking = {
+  id: string
+  no_booking: string
+  car_id: string
+  unit: string
+  no_polisi: string | null
+  customer_nama: string
+  sales_nama: string
+  tanggal_booking: string
+  harga_sepakat: number
+  dp_amount: number
+  sisa_pelunasan: number
+  hpp: number
+  nisbah_investor_pct: number
+  investor_nama: string[]
+}
+
+/** Subset yang dipakai panel kalkulasi & label investor — dipenuhi baik oleh unit ready stock maupun booking. */
+type UnitRingkas = Pick<UnitSiapJual, 'nisbah_investor_pct' | 'investor_nama'>
+
 /**
  * Nisbah tanpa nama pemiliknya bikin bingung, jadi label selalu menyebut
  * investornya. Urun dana dibatasi hanya untuk investor bernisbah sama
  * (lihat UrunDanaPanel), jadi satu unit selalu punya satu angka nisbah —
  * tidak ada rata-rata yang perlu disebut.
  */
-function labelInvestor(unit: UnitSiapJual) {
+function labelInvestor(unit: UnitRingkas) {
   const nama = unit.investor_nama
   const nisbah = formatPersen(unit.nisbah_investor_pct)
   if (nama.length === 0) return `Nisbah investor ${nisbah}`
@@ -78,19 +99,23 @@ export function PenjualanClient({
   error,
   canWrite,
   units,
+  bookings,
   customers,
   sales,
   unitTerpilih,
+  bookingTerpilih,
 }: {
   rows: Penjualan[]
   error: string | null
   canWrite: boolean
   units: UnitSiapJual[]
+  bookings: Booking[]
   customers: { id: string; nama: string; no_tlp: string | null }[]
   sales: { id: string; nama: string; komisi_default: number }[]
   unitTerpilih: string | null
+  bookingTerpilih: string | null
 }) {
-  const [open, setOpen] = React.useState(Boolean(unitTerpilih))
+  const [open, setOpen] = React.useState(Boolean(unitTerpilih) || Boolean(bookingTerpilih))
   const { confirm, dialog } = useConfirm()
   const { jalankan } = useAksi()
 
@@ -234,9 +259,11 @@ export function PenjualanClient({
         open={open}
         onOpenChange={setOpen}
         units={units}
+        bookings={bookings}
         customers={customers}
         sales={sales}
         unitAwal={unitTerpilih}
+        bookingAwal={bookingTerpilih}
       />
       {dialog}
     </>
@@ -249,18 +276,24 @@ function PenjualanFormDialog({
   open,
   onOpenChange,
   units,
+  bookings,
   customers,
   sales,
   unitAwal,
+  bookingAwal,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   units: UnitSiapJual[]
+  bookings: Booking[]
   customers: { id: string; nama: string; no_tlp: string | null }[]
   sales: { id: string; nama: string; komisi_default: number }[]
   unitAwal: string | null
+  bookingAwal: string | null
 }) {
+  const [mode, setMode] = React.useState<'langsung' | 'booking'>(bookingAwal ? 'booking' : 'langsung')
   const [carId, setCarId] = React.useState(unitAwal ?? '')
+  const [bookingId, setBookingId] = React.useState(bookingAwal ?? '')
   const [customerId, setCustomerId] = React.useState('')
   const [salesId, setSalesId] = React.useState('')
   const [tanggal, setTanggal] = React.useState(todayJakarta())
@@ -275,7 +308,9 @@ function PenjualanFormDialog({
 
   React.useEffect(() => {
     if (!open) return
+    setMode(bookingAwal ? 'booking' : 'langsung')
     setCarId(unitAwal ?? '')
+    setBookingId(bookingAwal ?? '')
     setCustomerId('')
     setSalesId('')
     setTanggal(todayJakarta())
@@ -284,7 +319,7 @@ function PenjualanFormDialog({
     setBiaya([])
     setMetode('TRANSFER')
     setCatatan('')
-  }, [open, unitAwal])
+  }, [open, unitAwal, bookingAwal])
 
   // Komisi terisi otomatis dari komisi default sales, tetap bisa diubah.
   React.useEffect(() => {
@@ -293,7 +328,16 @@ function PenjualanFormDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salesId])
 
-  const unit = units.find((u) => u.id === carId)
+  const bookingDipilih = bookings.find((b) => b.id === bookingId)
+
+  // Harga jual terisi otomatis dari harga sepakat booking, tetap bisa diubah.
+  React.useEffect(() => {
+    if (bookingDipilih) setHargaJual(bookingDipilih.harga_sepakat)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId])
+
+  const unit: UnitRingkas & { hpp: number } | undefined =
+    mode === 'langsung' ? units.find((u) => u.id === carId) : bookingDipilih
   const hasil = hitungPenjualan({
     hargaJual,
     hpp: unit?.hpp ?? 0,
@@ -302,88 +346,173 @@ function PenjualanFormDialog({
     nisbahInvestorPct: unit?.nisbah_investor_pct ?? 0,
   })
 
+  const disabled = hargaJual <= 0 || (mode === 'langsung' ? !carId : !bookingId)
+
   return (
     <>
       <FormDialog
         open={open}
         onOpenChange={onOpenChange}
         size="lg"
-        title="Penjualan Baru"
-        description="Panel kalkulasi di bawah ikut berubah saat Anda mengetik."
-        submitLabel="Simpan Penjualan"
-        successMessage="Penjualan tersimpan, modal & bagi hasil investor sudah diproses otomatis."
-        disabled={!carId || hargaJual <= 0}
+        title={
+          mode === 'langsung'
+            ? 'Penjualan Baru'
+            : `Lunasi Booking${bookingDipilih ? ` ${bookingDipilih.no_booking}` : ''}`
+        }
+        description={
+          mode === 'langsung'
+            ? 'Panel kalkulasi di bawah ikut berubah saat Anda mengetik.'
+            : 'DP yang sudah diterima otomatis diperhitungkan. Setelah disimpan, modal & bagi hasil investor langsung diproses.'
+        }
+        submitLabel={mode === 'langsung' ? 'Simpan Penjualan' : 'Simpan Pelunasan'}
+        successMessage={
+          mode === 'langsung'
+            ? 'Penjualan tersimpan, modal & bagi hasil investor sudah diproses otomatis.'
+            : 'Pelunasan tersimpan, modal & bagi hasil investor sudah diproses otomatis.'
+        }
+        disabled={disabled}
         onSubmit={() =>
-          buatPenjualan({
-            car_id: carId,
-            customer_id: customerId || null,
-            sales_person_id: salesId || null,
-            tanggal_jual: tanggal,
-            harga_jual: hargaJual,
-            komisi_sales: komisi,
-            rincian_biaya_lain: biaya.filter((b) => b.nama && b.nominal > 0),
-            metode_bayar: metode,
-            catatan,
-          })
+          mode === 'langsung'
+            ? buatPenjualan({
+                car_id: carId,
+                customer_id: customerId || null,
+                sales_person_id: salesId || null,
+                tanggal_jual: tanggal,
+                harga_jual: hargaJual,
+                komisi_sales: komisi,
+                rincian_biaya_lain: biaya.filter((b) => b.nama && b.nominal > 0),
+                metode_bayar: metode,
+                catatan,
+              })
+            : lunasiBooking({
+                booking_id: bookingId,
+                tanggal_jual: tanggal,
+                harga_jual: hargaJual,
+                komisi_sales: komisi,
+                rincian_biaya_lain: biaya.filter((b) => b.nama && b.nominal > 0),
+                metode_bayar: metode,
+                catatan,
+              })
         }
       >
         <div className="space-y-5 pb-2">
-          <Field label="Unit Mobil" required htmlFor="jual-unit">
-            <SearchableSelect
-              id="jual-unit"
-              options={units.map((u) => ({
-                value: u.id,
-                label: u.label,
-                keterangan: `${u.no_polisi ?? 'Tanpa no. polisi'} · HPP ${formatRupiah(u.hpp)}`,
-              }))}
-              value={carId}
-              onChange={setCarId}
-              placeholder="Pilih unit ready stock"
-              emptyText="Belum ada unit berstatus Ready Stock"
-            />
-          </Field>
+          {bookings.length > 0 ? (
+            <div className="inline-flex items-center gap-1 rounded-[10px] bg-neutral-soft p-1">
+              <button
+                type="button"
+                onClick={() => setMode('langsung')}
+                className={cn(
+                  'h-8 whitespace-nowrap rounded-sm px-3 text-label font-medium transition-colors',
+                  mode === 'langsung' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink',
+                )}
+              >
+                Penjualan Langsung
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('booking')}
+                className={cn(
+                  'h-8 whitespace-nowrap rounded-sm px-3 text-label font-medium transition-colors',
+                  mode === 'booking' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink',
+                )}
+              >
+                Dari Booking (Pelunasan)
+              </button>
+            </div>
+          ) : null}
+
+          {mode === 'langsung' ? (
+            <Field label="Unit Mobil" required htmlFor="jual-unit">
+              <SearchableSelect
+                id="jual-unit"
+                options={units.map((u) => ({
+                  value: u.id,
+                  label: u.label,
+                  keterangan: `${u.no_polisi ?? 'Tanpa no. polisi'} · HPP ${formatRupiah(u.hpp)}`,
+                }))}
+                value={carId}
+                onChange={setCarId}
+                placeholder="Pilih unit ready stock"
+                emptyText="Belum ada unit berstatus Ready Stock"
+              />
+            </Field>
+          ) : (
+            <Field label="Booking" required htmlFor="jual-booking">
+              <SearchableSelect
+                id="jual-booking"
+                options={bookings.map((b) => ({
+                  value: b.id,
+                  label: `${b.unit} · ${b.customer_nama}`,
+                  keterangan: `${b.no_booking} · sisa pelunasan ${formatRupiah(b.sisa_pelunasan)}`,
+                }))}
+                value={bookingId}
+                onChange={setBookingId}
+                placeholder="Pilih booking yang mau dilunasi"
+                emptyText="Belum ada booking aktif"
+              />
+            </Field>
+          )}
+
+          {mode === 'booking' && bookingDipilih ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-alt px-4 py-3">
+              <div>
+                <p className="text-label text-ink-muted">Customer · Salesman</p>
+                <p className="font-medium text-ink">
+                  {bookingDipilih.customer_nama} · {bookingDipilih.sales_nama}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-label text-ink-muted">DP sudah diterima</p>
+                <Money value={bookingDipilih.dp_amount} className="font-medium text-success" />
+              </div>
+            </div>
+          ) : null}
 
           <FormGrid>
-            <Field label="Customer" htmlFor="jual-customer">
-              <SearchableSelect
-                id="jual-customer"
-                options={customers.map((c) => ({
-                  value: c.id,
-                  label: c.nama,
-                  keterangan: c.no_tlp ?? undefined,
-                }))}
-                value={customerId}
-                onChange={setCustomerId}
-                placeholder="Pilih customer"
-                footer={
-                  <button
-                    type="button"
-                    onClick={() => setOpenCustomerBaru(true)}
-                    className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-label font-medium text-accent transition-colors hover:bg-accent-soft"
-                  >
-                    <UserPlus className="size-4" />
-                    Customer Baru
-                  </button>
-                }
-              />
-            </Field>
+            {mode === 'langsung' ? (
+              <>
+                <Field label="Customer" htmlFor="jual-customer">
+                  <SearchableSelect
+                    id="jual-customer"
+                    options={customers.map((c) => ({
+                      value: c.id,
+                      label: c.nama,
+                      keterangan: c.no_tlp ?? undefined,
+                    }))}
+                    value={customerId}
+                    onChange={setCustomerId}
+                    placeholder="Pilih customer"
+                    footer={
+                      <button
+                        type="button"
+                        onClick={() => setOpenCustomerBaru(true)}
+                        className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-label font-medium text-accent transition-colors hover:bg-accent-soft"
+                      >
+                        <UserPlus className="size-4" />
+                        Customer Baru
+                      </button>
+                    }
+                  />
+                </Field>
 
-            <Field label="Salesman" hint="Kosongkan kalau tanpa salesman" htmlFor="jual-sales">
-              <SearchableSelect
-                id="jual-sales"
-                options={[
-                  { value: '', label: 'Tanpa Salesman' },
-                  ...sales.map((s) => ({
-                    value: s.id,
-                    label: s.nama,
-                    keterangan: `Komisi default ${formatRupiah(s.komisi_default)}`,
-                  })),
-                ]}
-                value={salesId}
-                onChange={setSalesId}
-                placeholder="Pilih salesman"
-              />
-            </Field>
+                <Field label="Salesman" hint="Kosongkan kalau tanpa salesman" htmlFor="jual-sales">
+                  <SearchableSelect
+                    id="jual-sales"
+                    options={[
+                      { value: '', label: 'Tanpa Salesman' },
+                      ...sales.map((s) => ({
+                        value: s.id,
+                        label: s.nama,
+                        keterangan: `Komisi default ${formatRupiah(s.komisi_default)}`,
+                      })),
+                    ]}
+                    value={salesId}
+                    onChange={setSalesId}
+                    placeholder="Pilih salesman"
+                  />
+                </Field>
+              </>
+            ) : null}
 
             <Field label="Tanggal Jual" required htmlFor="tgl-jual">
               <Input
@@ -409,7 +538,7 @@ function PenjualanFormDialog({
               </Select>
             </Field>
 
-            <Field label="Harga Jual" required>
+            <Field label={mode === 'langsung' ? 'Harga Jual' : 'Harga Jual Final'} required hint={mode === 'booking' ? 'Terisi dari harga sepakat, bisa diubah' : undefined}>
               <MoneyInput value={hargaJual} onChange={setHargaJual} />
             </Field>
 
@@ -484,7 +613,7 @@ function PanelKalkulasi({
   unit,
 }: {
   hasil: ReturnType<typeof hitungPenjualan>
-  unit?: UnitSiapJual
+  unit?: UnitRingkas
 }) {
   const rugi = hasil.rugi
   return (
