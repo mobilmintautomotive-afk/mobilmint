@@ -11,7 +11,7 @@ import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
 import { Field, Input, MoneyInput, Textarea } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/select'
 import { simpanAset, hapusAset } from '@/app/actions/master'
 import { formatTanggal, todayJakarta } from '@/lib/format'
 import { KATEGORI_ASET } from '@/lib/constants'
@@ -199,6 +199,15 @@ function AsetFormDialog({
     setCatatan(aset?.catatan ?? '')
   }, [open, aset])
 
+  // Kategori bukan tabel master tersendiri (cuma kolom teks di
+  // `company_assets`), jadi kategori custom yang sudah tersimpan tetap
+  // disertakan supaya tetap terpilih & bisa dipakai lagi.
+  const kategoriOptions = React.useMemo(() => {
+    const daftar: string[] = [...KATEGORI_ASET]
+    if (kategori && !daftar.includes(kategori)) daftar.unshift(kategori)
+    return daftar.map((k) => ({ value: k, label: k }))
+  }, [kategori])
+
   return (
     <FormDialog
       open={open}
@@ -232,18 +241,16 @@ function AsetFormDialog({
 
         <FormGrid>
           <Field label="Kategori" required htmlFor="kategori-aset">
-            <Select value={kategori} onValueChange={setKategori}>
-              <SelectTrigger id="kategori-aset">
-                <SelectValue placeholder="Pilih kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {KATEGORI_ASET.map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {k}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              id="kategori-aset"
+              options={kategoriOptions}
+              value={kategori}
+              onChange={setKategori}
+              placeholder="Pilih kategori"
+              searchPlaceholder="Cari atau ketik kategori baru..."
+              creatable
+              createLabel={(q) => `Tambahkan kategori "${q}"`}
+            />
           </Field>
 
           <Field label="Tanggal Beli" required htmlFor="tgl-aset">

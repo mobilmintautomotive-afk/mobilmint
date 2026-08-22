@@ -282,6 +282,15 @@ function PerbaikanFormDialog({
 
   const unit = units.find((u) => u.id === carId)
 
+  // Jenis perbaikan bukan tabel master tersendiri (cuma kolom teks di
+  // `repairs`), jadi jenis custom yang sudah tersimpan tetap disertakan
+  // supaya tetap terpilih & bisa dipakai lagi.
+  const jenisOptions = React.useMemo(() => {
+    const daftar: string[] = [...JENIS_PERBAIKAN]
+    if (jenis && !daftar.includes(jenis)) daftar.unshift(jenis)
+    return daftar.map((j) => ({ value: j, label: j }))
+  }, [jenis])
+
   return (
     <FormDialog
       open={open}
@@ -345,18 +354,16 @@ function PerbaikanFormDialog({
           </Field>
 
           <Field label="Jenis Perbaikan" required htmlFor="perbaikan-jenis">
-            <Select value={jenis} onValueChange={setJenis}>
-              <SelectTrigger id="perbaikan-jenis">
-                <SelectValue placeholder="Pilih jenis" />
-              </SelectTrigger>
-              <SelectContent>
-                {JENIS_PERBAIKAN.map((j) => (
-                  <SelectItem key={j} value={j}>
-                    {j}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              id="perbaikan-jenis"
+              options={jenisOptions}
+              value={jenis}
+              onChange={setJenis}
+              placeholder="Pilih jenis"
+              searchPlaceholder="Cari atau ketik jenis baru..."
+              creatable
+              createLabel={(q) => `Tambahkan jenis "${q}"`}
+            />
           </Field>
 
           <Field label="Biaya" required>

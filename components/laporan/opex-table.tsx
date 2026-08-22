@@ -11,7 +11,7 @@ import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
 import { Field, Input, MoneyInput, Textarea } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/ui/select'
 import { simpanOpex, hapusOpex } from '@/app/actions/master'
 import { formatTanggal, todayJakarta } from '@/lib/format'
 import { KATEGORI_OPEX } from '@/lib/constants'
@@ -194,6 +194,15 @@ function OpexFormDialog({
     setNominal(opex?.nominal ?? 0)
   }, [open, opex])
 
+  // Kategori bukan tabel master tersendiri (cuma kolom teks di
+  // `operational_expenses`), jadi kategori custom yang sudah tersimpan tetap
+  // disertakan supaya tetap terpilih & bisa dipakai lagi.
+  const kategoriOptions = React.useMemo(() => {
+    const daftar: string[] = [...KATEGORI_OPEX]
+    if (kategori && !daftar.includes(kategori)) daftar.unshift(kategori)
+    return daftar.map((k) => ({ value: k, label: k }))
+  }, [kategori])
+
   return (
     <FormDialog
       open={open}
@@ -224,18 +233,16 @@ function OpexFormDialog({
             />
           </Field>
           <Field label="Kategori" required htmlFor="kategori-opex">
-            <Select value={kategori} onValueChange={setKategori}>
-              <SelectTrigger id="kategori-opex">
-                <SelectValue placeholder="Pilih kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {KATEGORI_OPEX.map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {k}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              id="kategori-opex"
+              options={kategoriOptions}
+              value={kategori}
+              onChange={setKategori}
+              placeholder="Pilih kategori"
+              searchPlaceholder="Cari atau ketik kategori baru..."
+              creatable
+              createLabel={(q) => `Tambahkan kategori "${q}"`}
+            />
           </Field>
         </FormGrid>
 
