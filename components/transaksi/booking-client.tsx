@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Ban, CheckCircle2, PiggyBank, Plus, UserPlus } from 'lucide-react'
+import { Ban, BookmarkCheck, CheckCircle2, Plus, UserPlus } from 'lucide-react'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
@@ -172,7 +172,7 @@ export function BookingClient({
         }
         empty={
           <EmptyState
-            icon={PiggyBank}
+            icon={BookmarkCheck}
             title="Belum ada booking aktif"
             description="Kalau customer baru bayar DP dan belum lunas, catat di sini supaya unitnya ditahan dulu (tidak ditawarkan ke pembeli lain)."
             action={

@@ -1,5 +1,6 @@
 import {
   Banknote,
+  BookmarkCheck,
   Boxes,
   Car,
   FileBarChart,
@@ -7,7 +8,6 @@ import {
   Landmark,
   LayoutDashboard,
   PackageCheck,
-  PiggyBank,
   Receipt,
   ReceiptText,
   Scale,
@@ -85,7 +85,7 @@ export const NAV_BACKOFFICE: NavGroup[] = [
     items: [
       { label: 'Customer', href: '/master/customer', icon: UserRound },
       { label: 'Salesman', href: '/master/sales', icon: UserRoundCheck },
-      { label: 'Booking', href: '/transaksi/booking', icon: PiggyBank },
+      { label: 'Booking', href: '/transaksi/booking', icon: BookmarkCheck },
       { label: 'Penjualan', href: '/transaksi/penjualan', icon: Receipt },
     ],
   },

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Boxes, Clock, PackageCheck, PiggyBank, ShoppingCart, Wallet, Wrench } from 'lucide-react'
+import { BookmarkCheck, Boxes, Clock, PackageCheck, ShoppingCart, Wallet, Wrench } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { MetricCard } from '@/components/shared/metric-card'
 import { StockClient } from '@/components/transaksi/stock-client'
@@ -66,7 +66,7 @@ export default async function StockPage() {
         <MetricCard
           label="Terbooking"
           value={terbooking}
-          icon={PiggyBank}
+          icon={BookmarkCheck}
           tone="warning"
           subtext="DP masuk, menunggu pelunasan"
         />
