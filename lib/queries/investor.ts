@@ -1,6 +1,6 @@
 import 'server-only'
 import { aman, num } from './base'
-import { formatBulan } from '@/lib/format'
+import { formatBulan, umurHari } from '@/lib/format'
 import { susunWaterfallInvestor, type BarisWaterfall } from '@/lib/calc'
 import type { InvestorLedger } from '@/types/database'
 
@@ -27,6 +27,23 @@ export type DashboardInvestor = {
     bagi_hasil: number | null
     estimasi: boolean
   }[]
+  /** Unit yang didanai investor ini dan sedang berstatus PERBAIKAN, lengkap rincian pengerjaannya. */
+  unitPerbaikan: {
+    car_id: string
+    unit: string
+    no_polisi: string | null
+    hari_di_bengkel: number
+    perbaikan: {
+      id: string
+      jenis_perbaikan: string
+      deskripsi: string | null
+      vendor_nama: string
+      biaya: number
+      status: string
+      tanggal_masuk: string
+      tanggal_selesai: string | null
+    }[]
+  }[]
   trend: { bulan: string; unit: number; nilai: number }[]
   waterfall: BarisWaterfall[]
 }
@@ -44,6 +61,7 @@ const KOSONG: DashboardInvestor = {
   punyaAkadAktif: false,
   ledger: [],
   unitDidanai: [],
+  unitPerbaikan: [],
   trend: [],
   waterfall: [],
 }
@@ -79,7 +97,7 @@ export async function getDashboardInvestor(investorId: string) {
 
     const carIds = ((fundings.data ?? []) as any[]).map((f) => f.car_id)
 
-    const [purchases, details] = await Promise.all([
+    const [purchases, details, repairs] = await Promise.all([
       carIds.length
         ? db.from('purchases').select('car_id, tanggal_beli').in('car_id', carIds)
         : Promise.resolve({ data: [] as any[] }),
@@ -88,6 +106,13 @@ export async function getDashboardInvestor(investorId: string) {
             .from('profit_sharing_details')
             .select('bagi_hasil, profit_sharings(car_id, tanggal_proses, is_reversed)')
             .eq('investor_id', investorId)
+        : Promise.resolve({ data: [] as any[] }),
+      carIds.length
+        ? db
+            .from('repairs')
+            .select('*, vendors(nama)')
+            .in('car_id', carIds)
+            .order('tanggal_masuk', { ascending: false })
         : Promise.resolve({ data: [] as any[] }),
     ])
 
@@ -114,6 +139,38 @@ export async function getDashboardInvestor(investorId: string) {
         estimasi: !bagiPerCar.has(f.car_id),
       }))
       .sort((a, z) => (z.tanggal_beli ?? '').localeCompare(a.tanggal_beli ?? ''))
+
+    // Progres perbaikan untuk unit yang statusnya sedang PERBAIKAN — supaya
+    // investor tahu unitnya sedang dikerjakan apa, bukan cuma badge status.
+    const repairPerCar = new Map<string, any[]>()
+    for (const r of ((repairs.data ?? []) as any[])) {
+      const cur = repairPerCar.get(r.car_id) ?? []
+      cur.push(r)
+      repairPerCar.set(r.car_id, cur)
+    }
+    const unitPerbaikan = unitDidanai
+      .filter((u) => u.status === 'PERBAIKAN')
+      .map((u) => {
+        // repairs sudah diurutkan tanggal_masuk terbaru dulu (lihat query di atas).
+        const list = repairPerCar.get(u.car_id) ?? []
+        const aktif = list.find((r) => r.status === 'PROSES') ?? list[0]
+        return {
+          car_id: u.car_id,
+          unit: u.unit,
+          no_polisi: u.no_polisi,
+          hari_di_bengkel: umurHari(aktif?.tanggal_masuk ?? u.tanggal_beli) ?? 0,
+          perbaikan: list.map((r) => ({
+            id: r.id as string,
+            jenis_perbaikan: r.jenis_perbaikan as string,
+            deskripsi: r.deskripsi as string | null,
+            vendor_nama: r.vendors?.nama ?? 'Tanpa vendor',
+            biaya: num(r.biaya),
+            status: r.status as string,
+            tanggal_masuk: r.tanggal_masuk as string,
+            tanggal_selesai: r.tanggal_selesai as string | null,
+          })),
+        }
+      })
 
     const rows = ((ledger.data ?? []) as any[]).map((l) => ({
       ...l,
@@ -157,6 +214,7 @@ export async function getDashboardInvestor(investorId: string) {
       punyaAkadAktif: ((kontrak.data ?? []) as any[]).length > 0,
       ledger: rows,
       unitDidanai,
+      unitPerbaikan,
       trend,
       waterfall: susunWaterfallInvestor({
         totalSetoran: totalInvestasi,

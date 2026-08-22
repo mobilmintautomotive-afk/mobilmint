@@ -8,6 +8,7 @@ import { SalesTrendChart } from '@/components/charts/sales-trend-chart'
 import { WaterfallChart } from '@/components/charts/waterfall-chart'
 import { LedgerTable } from '@/components/shared/ledger-table'
 import { UnitDidanaiTable } from '@/components/investor/unit-didanai-table'
+import { UnitPerbaikanCard } from '@/components/investor/unit-perbaikan-card'
 import { TombolLaporanInvestor } from '@/components/investor/tombol-laporan'
 import { InfoHint, TooltipProvider } from '@/components/ui/primitives'
 import { getDashboardInvestor } from '@/lib/queries/investor'
@@ -139,6 +140,8 @@ export default async function DashboardInvestorPage() {
           <WaterfallChart data={data.waterfall} height={280} />
         </ChartCard>
       </div>
+
+      <UnitPerbaikanCard rows={data.unitPerbaikan} />
 
       <div className="mt-5">
         <div className="mb-3 flex items-center justify-between">
