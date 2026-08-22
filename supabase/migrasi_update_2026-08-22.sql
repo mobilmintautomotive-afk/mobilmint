@@ -123,3 +123,52 @@ begin
 end $$;
 
 commit;
+
+-- ---------------------------------------------------------------------
+-- Settle: tandai semua bagi hasil investor sudah ditransfer, sesuai
+-- tanggal_jual masing-masing (dipastikan sudah benar-benar cair ke
+-- rekening pribadi investor per tanggal tersebut).
+-- ---------------------------------------------------------------------
+begin;
+do $$
+declare r record;
+begin
+  for r in
+    select psd.id, ps.tanggal_proses
+    from profit_sharing_details psd
+    join profit_sharings ps on ps.id = psd.profit_sharing_id
+    where psd.sudah_ditransfer = false and psd.bagi_hasil > 0 and not ps.is_reversed
+    order by ps.tanggal_proses
+  loop
+    perform proses_pencairan_dana(r.id, r.tanggal_proses, null);
+  end loop;
+end $$;
+commit;
+
+-- ---------------------------------------------------------------------
+-- Cairkan hak pengelola penuh ke Rekening Operasional, tanggal hari ini.
+-- ---------------------------------------------------------------------
+select cairkan_hak_pengelola(
+  '88888888-0000-4000-8000-000000000001',
+  363653300,
+  current_date,
+  'Pencairan hak pengelola — settle posisi per 22 Agustus 2026'
+);
+
+-- ---------------------------------------------------------------------
+-- Koreksi saldo Habib: modelnya on-demand (tidak menahan saldo idle) —
+-- setelah settle bagi hasil, saldo sempat minus Rp325.000 karena koreksi
+-- biaya yang baru ketahuan belakangan. Top-up kecil ini menutup selisih
+-- itu supaya saldo balik ke Rp0, konsisten dengan cara Habib beroperasi.
+-- ---------------------------------------------------------------------
+begin;
+insert into investor_ledger (investor_id, contract_id, tipe, amount, keterangan, tanggal)
+values (
+  '99999999-0000-4000-8000-000000000009',
+  '853bed61-94db-496c-969b-20fe7ea6397c',
+  'SETORAN',
+  325000,
+  'Setoran on-demand — top-up menutup selisih biaya tambahan (Habib tidak menahan saldo, dana dikirim sesuai kebutuhan pembelian)',
+  current_date
+);
+commit;
