@@ -74,10 +74,11 @@ export default async function DetailMobilPage({ params }: { params: { id: string
                   ? (data.repairs[data.repairs.length - 1]?.tanggal_selesai ?? null)
                   : car.tanggal_beli
               }
+              tanggalBooking={data.booking?.tanggal_booking ?? null}
               tanggalJual={car.tanggal_jual}
               tanggalSelesai={data.profitSharing?.tanggal_proses ?? null}
             />
-            {umur !== null && ['DIBELI', 'PERBAIKAN', 'READY_STOCK'].includes(car.status) ? (
+            {umur !== null && ['DIBELI', 'PERBAIKAN', 'READY_STOCK', 'TERBOOKING'].includes(car.status) ? (
               <p className="mt-4 text-label text-ink-muted">
                 Unit ini sudah{' '}
                 <span className={umur > 60 ? 'font-medium text-danger' : 'font-medium text-ink'}>
@@ -110,6 +111,32 @@ export default async function DetailMobilPage({ params }: { params: { id: string
               </div>
             </div>
           </Card>
+
+          {data.booking && car.status === 'TERBOOKING' ? (
+            <Card>
+              <CardTitle className="mb-4">Booking Aktif</CardTitle>
+              <div className="space-y-2.5">
+                <BarisHpp label="Harga sepakat" value={Number(data.booking.harga_sepakat)} />
+                <BarisHpp label="DP diterima" value={Number(data.booking.dp_amount)} sub />
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-ink">Sisa pelunasan</span>
+                  <Money
+                    value={Number(data.booking.harga_sepakat) - Number(data.booking.dp_amount)}
+                    size="lg"
+                  />
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-3">
+                <Info label="Customer" value={data.booking.customers?.nama ?? '-'} />
+                <Info label="No. booking" value={data.booking.no_booking} />
+                <Info label="Tanggal booking" value={formatTanggal(data.booking.tanggal_booking)} />
+              </div>
+              {data.booking.catatan ? (
+                <p className="mt-3 text-label text-ink-muted">{data.booking.catatan}</p>
+              ) : null}
+            </Card>
+          ) : null}
 
           {data.sale ? (
             <Card>

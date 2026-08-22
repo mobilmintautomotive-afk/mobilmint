@@ -49,6 +49,7 @@ export const CAR_STATUS = [
   'DIBELI',
   'PERBAIKAN',
   'READY_STOCK',
+  'TERBOOKING',
   'TERJUAL',
   'SELESAI',
 ] as const
@@ -58,8 +59,17 @@ export const CAR_STATUS_LABEL: Record<CarStatus, string> = {
   DIBELI: 'Dibeli',
   PERBAIKAN: 'Perbaikan',
   READY_STOCK: 'Ready Stock',
+  TERBOOKING: 'Terbooking',
   TERJUAL: 'Terjual',
   SELESAI: 'Selesai',
+}
+
+export const BOOKING_STATUS = ['AKTIF', 'SELESAI', 'BATAL'] as const
+export type BookingStatus = (typeof BOOKING_STATUS)[number]
+export const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
+  AKTIF: 'Aktif',
+  SELESAI: 'Selesai',
+  BATAL: 'Batal',
 }
 
 export const CONTRACT_STATUS = ['MENUNGGU_DANA', 'AKTIF', 'SELESAI', 'BATAL'] as const

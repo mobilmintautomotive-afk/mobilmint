@@ -28,7 +28,7 @@ export async function simpanPerbaikan(input: unknown) {
 
   const res = await jalankan(async (db) => {
     const car = cek(await db.from('cars').select('status').eq('id', v.car_id).single()) as any
-    if (!['DIBELI', 'PERBAIKAN', 'READY_STOCK'].includes(car.status)) {
+    if (!['DIBELI', 'PERBAIKAN', 'READY_STOCK', 'TERBOOKING'].includes(car.status)) {
       throw new Error('Unit yang sudah terjual tidak bisa ditambahkan perbaikan.')
     }
 

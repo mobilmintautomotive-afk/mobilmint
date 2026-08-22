@@ -1,0 +1,550 @@
+'use client'
+
+import * as React from 'react'
+import Link from 'next/link'
+import type { ColumnDef } from '@tanstack/react-table'
+import { Ban, CheckCircle2, PiggyBank, Plus, UserPlus } from 'lucide-react'
+import { DataTable } from '@/components/shared/data-table'
+import { EmptyState } from '@/components/shared/states'
+import { Money } from '@/components/shared/money'
+import { RowActions } from '@/components/shared/row-actions'
+import { useConfirm } from '@/components/shared/confirm-dialog'
+import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
+import { RincianBiayaRows } from '@/components/forms/rincian-biaya'
+import { Button } from '@/components/ui/button'
+import { Field, Input, MoneyInput, Textarea } from '@/components/ui/input'
+import {
+  SearchableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { buatBooking, batalkanBooking, lunasiBooking } from '@/app/actions/bookings'
+import { simpanCustomer } from '@/app/actions/master'
+import { formatRupiah, formatTanggal, todayJakarta } from '@/lib/format'
+import { PAYMENT_METHOD, PAYMENT_METHOD_LABEL } from '@/lib/constants'
+import type { RincianBiaya } from '@/types/database'
+
+type Booking = {
+  id: string
+  no_booking: string
+  car_id: string
+  unit: string
+  no_polisi: string | null
+  customer_nama: string
+  customer_tlp: string | null
+  sales_nama: string
+  tanggal_booking: string
+  harga_sepakat: number
+  dp_amount: number
+  sisa_pelunasan: number
+  metode_bayar: string
+  catatan: string | null
+}
+
+type UnitOption = {
+  id: string
+  label: string
+  no_polisi: string | null
+  hpp: number
+}
+
+/**
+ * Booking (DP) — customer bayar uang muka dulu, unit ditahan (TERBOOKING)
+ * sampai lunas. Terpisah dari tabel Penjualan karena belum jadi transaksi
+ * final: belum ada HPP terkunci, belum ada bagi hasil investor.
+ */
+export function BookingClient({
+  rows,
+  error,
+  canWrite,
+  units,
+  customers,
+  sales,
+}: {
+  rows: Booking[]
+  error: string | null
+  canWrite: boolean
+  units: UnitOption[]
+  customers: { id: string; nama: string; no_tlp: string | null }[]
+  sales: { id: string; nama: string; komisi_default: number }[]
+}) {
+  const [openBaru, setOpenBaru] = React.useState(false)
+  const [lunasi, setLunasi] = React.useState<Booking | null>(null)
+  const { confirm, dialog } = useConfirm()
+  const { jalankan } = useAksi()
+
+  const columns = React.useMemo<ColumnDef<Booking, any>[]>(
+    () => [
+      { accessorKey: 'no_booking', header: 'No. Booking' },
+      {
+        accessorKey: 'unit',
+        header: 'Unit',
+        cell: ({ row }) => (
+          <Link href={`/master/mobil/${row.original.car_id}`} className="hover:text-accent">
+            <span className="block font-medium">{row.original.unit}</span>
+            <span className="block text-label text-ink-muted">{row.original.no_polisi ?? '-'}</span>
+          </Link>
+        ),
+      },
+      { accessorKey: 'customer_nama', header: 'Customer' },
+      {
+        accessorKey: 'tanggal_booking',
+        header: 'Tanggal Booking',
+        meta: { exportValue: (r: Booking) => r.tanggal_booking },
+        cell: ({ getValue }) => formatTanggal(getValue() as string),
+      },
+      {
+        accessorKey: 'harga_sepakat',
+        header: 'Harga Sepakat',
+        meta: { align: 'right' as const },
+        cell: ({ getValue }) => <Money value={getValue() as number} />,
+      },
+      {
+        accessorKey: 'dp_amount',
+        header: 'DP Diterima',
+        meta: { align: 'right' as const },
+        cell: ({ getValue }) => <Money value={getValue() as number} className="text-success" />,
+      },
+      {
+        accessorKey: 'sisa_pelunasan',
+        header: 'Sisa Pelunasan',
+        meta: { align: 'right' as const },
+        cell: ({ getValue }) => <Money value={getValue() as number} className="font-medium" />,
+      },
+      {
+        id: 'aksi',
+        header: '',
+        enableSorting: false,
+        meta: { align: 'right' as const },
+        cell: ({ row }) =>
+          canWrite ? (
+            <RowActions
+              actions={[
+                {
+                  label: 'Lunasi',
+                  icon: CheckCircle2,
+                  onSelect: () => setLunasi(row.original),
+                },
+                {
+                  label: 'Batalkan Booking',
+                  icon: Ban,
+                  tone: 'danger',
+                  onSelect: () =>
+                    confirm({
+                      title: 'Batalkan booking ini?',
+                      description: `Booking ${row.original.no_booking} akan dibatalkan dan unit ${row.original.unit} kembali ke Ready Stock. DP yang sudah diterima perlu direkonsiliasi manual sesuai kesepakatan dengan customer.`,
+                      confirmLabel: 'Ya, batalkan',
+                      successMessage: 'Booking dibatalkan',
+                      onConfirm: async () => {
+                        const ok = await jalankan(() => batalkanBooking(row.original.id))
+                        if (!ok) throw new Error('')
+                      },
+                    }),
+                },
+              ]}
+            />
+          ) : null,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canWrite],
+  )
+
+  if (rows.length === 0 && !canWrite) return null
+
+  return (
+    <div className="mb-5">
+      <DataTable<Booking>
+        columns={columns}
+        data={rows}
+        searchKeys={['no_booking', 'unit', 'customer_nama', 'no_polisi']}
+        searchPlaceholder="Cari no. booking, unit, atau customer..."
+        exportName="booking-aktif"
+        error={error}
+        toolbarAction={
+          canWrite ? (
+            <Button variant="secondary" onClick={() => setOpenBaru(true)}>
+              <Plus />
+              <span className="hidden sm:inline">Booking Baru</span>
+              <span className="sm:hidden">Booking</span>
+            </Button>
+          ) : null
+        }
+        empty={
+          <EmptyState
+            icon={PiggyBank}
+            title="Belum ada booking aktif"
+            description="Kalau customer baru bayar DP dan belum lunas, catat di sini supaya unitnya ditahan dulu (tidak ditawarkan ke pembeli lain)."
+            action={
+              canWrite ? (
+                <Button variant="secondary" onClick={() => setOpenBaru(true)}>
+                  <Plus />
+                  Booking Baru
+                </Button>
+              ) : undefined
+            }
+          />
+        }
+        mobileCard={(row) => (
+          <Link href={`/master/mobil/${row.car_id}`} className="block space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-ink">{row.unit}</p>
+                <p className="text-label text-ink-muted">
+                  {row.no_booking} · {row.customer_nama}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-label text-ink-muted">DP {formatRupiah(row.dp_amount)}</span>
+              <Money value={row.sisa_pelunasan} className="font-medium" />
+            </div>
+          </Link>
+        )}
+      />
+
+      <BookingFormDialog
+        open={openBaru}
+        onOpenChange={setOpenBaru}
+        units={units}
+        customers={customers}
+        sales={sales}
+      />
+      <LunasiFormDialog booking={lunasi} onOpenChange={(v) => !v && setLunasi(null)} />
+      {dialog}
+    </div>
+  )
+}
+
+/* ------------------------- Form booking baru ------------------------ */
+
+function BookingFormDialog({
+  open,
+  onOpenChange,
+  units,
+  customers,
+  sales,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  units: UnitOption[]
+  customers: { id: string; nama: string; no_tlp: string | null }[]
+  sales: { id: string; nama: string; komisi_default: number }[]
+}) {
+  const [carId, setCarId] = React.useState('')
+  const [customerId, setCustomerId] = React.useState('')
+  const [salesId, setSalesId] = React.useState('')
+  const [tanggal, setTanggal] = React.useState(todayJakarta())
+  const [hargaSepakat, setHargaSepakat] = React.useState(0)
+  const [dpAmount, setDpAmount] = React.useState(0)
+  const [metode, setMetode] = React.useState<string>('TRANSFER')
+  const [catatan, setCatatan] = React.useState('')
+  const [openCustomerBaru, setOpenCustomerBaru] = React.useState(false)
+  const [namaCustBaru, setNamaCustBaru] = React.useState('')
+  const [tlpCustBaru, setTlpCustBaru] = React.useState('')
+
+  React.useEffect(() => {
+    if (!open) return
+    setCarId('')
+    setCustomerId('')
+    setSalesId('')
+    setTanggal(todayJakarta())
+    setHargaSepakat(0)
+    setDpAmount(0)
+    setMetode('TRANSFER')
+    setCatatan('')
+  }, [open])
+
+  const unit = units.find((u) => u.id === carId)
+
+  return (
+    <>
+      <FormDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        size="lg"
+        title="Booking Baru"
+        description="Untuk customer yang baru bayar DP dan belum lunas. Unit akan ditahan (Terbooking) sampai Anda proses Lunasi atau Batalkan."
+        submitLabel="Simpan Booking"
+        successMessage="Booking tersimpan, unit sekarang berstatus Terbooking."
+        disabled={!carId || hargaSepakat <= 0 || dpAmount <= 0 || dpAmount > hargaSepakat}
+        onSubmit={() =>
+          buatBooking({
+            car_id: carId,
+            customer_id: customerId || null,
+            sales_person_id: salesId || null,
+            tanggal_booking: tanggal,
+            harga_sepakat: hargaSepakat,
+            dp_amount: dpAmount,
+            metode_bayar: metode,
+            catatan,
+          })
+        }
+      >
+        <div className="space-y-5 pb-2">
+          <Field label="Unit Mobil" required htmlFor="booking-unit">
+            <SearchableSelect
+              id="booking-unit"
+              options={units.map((u) => ({
+                value: u.id,
+                label: u.label,
+                keterangan: `${u.no_polisi ?? 'Tanpa no. polisi'} · HPP ${formatRupiah(u.hpp)}`,
+              }))}
+              value={carId}
+              onChange={setCarId}
+              placeholder="Pilih unit ready stock"
+              emptyText="Belum ada unit berstatus Ready Stock"
+            />
+          </Field>
+
+          <FormGrid>
+            <Field label="Customer" htmlFor="booking-customer">
+              <SearchableSelect
+                id="booking-customer"
+                options={customers.map((c) => ({
+                  value: c.id,
+                  label: c.nama,
+                  keterangan: c.no_tlp ?? undefined,
+                }))}
+                value={customerId}
+                onChange={setCustomerId}
+                placeholder="Pilih customer"
+                footer={
+                  <button
+                    type="button"
+                    onClick={() => setOpenCustomerBaru(true)}
+                    className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-label font-medium text-accent transition-colors hover:bg-accent-soft"
+                  >
+                    <UserPlus className="size-4" />
+                    Customer Baru
+                  </button>
+                }
+              />
+            </Field>
+
+            <Field label="Salesman" hint="Kosongkan kalau tanpa salesman" htmlFor="booking-sales">
+              <SearchableSelect
+                id="booking-sales"
+                options={[
+                  { value: '', label: 'Tanpa Salesman' },
+                  ...sales.map((s) => ({ value: s.id, label: s.nama })),
+                ]}
+                value={salesId}
+                onChange={setSalesId}
+                placeholder="Pilih salesman"
+              />
+            </Field>
+
+            <Field label="Tanggal Booking" required htmlFor="tgl-booking">
+              <Input
+                id="tgl-booking"
+                type="date"
+                value={tanggal}
+                onChange={(e) => setTanggal(e.target.value)}
+              />
+            </Field>
+
+            <Field label="Metode Pembayaran DP" htmlFor="metode-booking">
+              <Select value={metode} onValueChange={setMetode}>
+                <SelectTrigger id="metode-booking">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHOD.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {PAYMENT_METHOD_LABEL[m]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field label="Harga Sepakat" required hint="Harga jual final yang disepakati">
+              <MoneyInput value={hargaSepakat} onChange={setHargaSepakat} />
+            </Field>
+
+            <Field
+              label="DP Diterima"
+              required
+              hint={
+                dpAmount > hargaSepakat
+                  ? 'DP tidak boleh lebih besar dari harga sepakat'
+                  : 'Uang muka yang sudah benar-benar diterima'
+              }
+            >
+              <MoneyInput value={dpAmount} onChange={setDpAmount} />
+            </Field>
+          </FormGrid>
+
+          {unit ? (
+            <div className="flex items-center justify-between rounded-lg bg-surface-alt px-4 py-3">
+              <span className="text-label text-ink-muted">Sisa pelunasan</span>
+              <Money
+                value={Math.max(0, hargaSepakat - dpAmount)}
+                size="lg"
+                className="font-medium"
+              />
+            </div>
+          ) : null}
+
+          <Field label="Catatan" htmlFor="catatan-booking">
+            <Textarea
+              id="catatan-booking"
+              value={catatan}
+              onChange={(e) => setCatatan(e.target.value)}
+              placeholder="Contoh: pelunasan dijanjikan akhir bulan"
+            />
+          </Field>
+        </div>
+      </FormDialog>
+
+      <FormDialog
+        open={openCustomerBaru}
+        onOpenChange={(v) => {
+          setOpenCustomerBaru(v)
+          if (v) {
+            setNamaCustBaru('')
+            setTlpCustBaru('')
+          }
+        }}
+        size="sm"
+        title="Customer Baru"
+        successMessage="Customer baru ditambahkan"
+        onSubmit={async () => {
+          const res = await simpanCustomer({ nama: namaCustBaru, no_tlp: tlpCustBaru })
+          if (res.ok && res.data?.id) setCustomerId(res.data.id)
+          return res
+        }}
+      >
+        <div className="space-y-4">
+          <Field label="Nama Customer" required htmlFor="nama-cust-booking">
+            <Input
+              id="nama-cust-booking"
+              value={namaCustBaru}
+              onChange={(e) => setNamaCustBaru(e.target.value)}
+            />
+          </Field>
+          <Field label="No. Telepon" htmlFor="tlp-cust-booking">
+            <Input
+              id="tlp-cust-booking"
+              value={tlpCustBaru}
+              onChange={(e) => setTlpCustBaru(e.target.value)}
+            />
+          </Field>
+        </div>
+      </FormDialog>
+    </>
+  )
+}
+
+/* --------------------------- Form pelunasan -------------------------- */
+
+function LunasiFormDialog({
+  booking,
+  onOpenChange,
+}: {
+  booking: Booking | null
+  onOpenChange: (v: boolean) => void
+}) {
+  const [tanggal, setTanggal] = React.useState(todayJakarta())
+  const [hargaJual, setHargaJual] = React.useState(0)
+  const [komisi, setKomisi] = React.useState(0)
+  const [biaya, setBiaya] = React.useState<RincianBiaya[]>([])
+  const [metode, setMetode] = React.useState<string>('TRANSFER')
+  const [catatan, setCatatan] = React.useState('')
+
+  React.useEffect(() => {
+    if (!booking) return
+    setTanggal(todayJakarta())
+    setHargaJual(booking.harga_sepakat)
+    setKomisi(0)
+    setBiaya([])
+    setMetode(booking.metode_bayar)
+    setCatatan('')
+  }, [booking])
+
+  if (!booking) return null
+
+  return (
+    <FormDialog
+      open={Boolean(booking)}
+      onOpenChange={onOpenChange}
+      size="lg"
+      title={`Lunasi Booking ${booking.no_booking}`}
+      description={`${booking.unit} · DP sudah diterima ${formatRupiah(booking.dp_amount)}. Ini akan tercatat sebagai penjualan, modal & bagi hasil investor langsung diproses otomatis.`}
+      submitLabel="Simpan Pelunasan"
+      successMessage="Pelunasan tersimpan, modal & bagi hasil investor sudah diproses otomatis."
+      disabled={hargaJual <= 0}
+      onSubmit={() =>
+        lunasiBooking({
+          booking_id: booking.id,
+          tanggal_jual: tanggal,
+          harga_jual: hargaJual,
+          komisi_sales: komisi,
+          rincian_biaya_lain: biaya.filter((b) => b.nama && b.nominal > 0),
+          metode_bayar: metode,
+          catatan,
+        })
+      }
+    >
+      <div className="space-y-5 pb-2">
+        <div className="flex items-center justify-between rounded-lg bg-surface-alt px-4 py-3">
+          <span className="text-label text-ink-muted">Sisa pelunasan (perkiraan)</span>
+          <Money
+            value={Math.max(0, hargaJual - booking.dp_amount)}
+            size="lg"
+            className="font-medium"
+          />
+        </div>
+
+        <FormGrid>
+          <Field label="Tanggal Lunas" required htmlFor="tgl-lunas">
+            <Input
+              id="tgl-lunas"
+              type="date"
+              value={tanggal}
+              onChange={(e) => setTanggal(e.target.value)}
+            />
+          </Field>
+
+          <Field label="Metode Pelunasan" htmlFor="metode-lunas">
+            <Select value={metode} onValueChange={setMetode}>
+              <SelectTrigger id="metode-lunas">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAYMENT_METHOD.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {PAYMENT_METHOD_LABEL[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="Harga Jual Final" required hint="Terisi dari harga sepakat, bisa diubah">
+            <MoneyInput value={hargaJual} onChange={setHargaJual} />
+          </Field>
+
+          <Field label="Komisi Sales">
+            <MoneyInput value={komisi} onChange={setKomisi} />
+          </Field>
+        </FormGrid>
+
+        <RincianBiayaRows
+          label="Biaya Penjualan Lain"
+          rows={biaya}
+          onChange={setBiaya}
+          placeholder="Contoh: biaya administrasi, balik nama"
+        />
+
+        <Field label="Catatan" htmlFor="catatan-lunas">
+          <Textarea id="catatan-lunas" value={catatan} onChange={(e) => setCatatan(e.target.value)} />
+        </Field>
+      </div>
+    </FormDialog>
+  )
+}

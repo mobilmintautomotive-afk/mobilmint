@@ -37,7 +37,7 @@ export async function getMobil(id: string) {
 export async function getDetailMobil(id: string) {
   return aman(
     async (db) => {
-      const [car, purchase, repairs, fundings, sale] = await Promise.all([
+      const [car, purchase, repairs, fundings, sale, booking] = await Promise.all([
         db.from('v_car_overview').select('*').eq('id', id).maybeSingle(),
         db.from('purchases').select('*, suppliers(nama, tipe_supplier)').eq('car_id', id).maybeSingle(),
         db
@@ -54,6 +54,13 @@ export async function getDetailMobil(id: string) {
           .from('car_sales')
           .select('*, customers(nama), sales_persons(nama)')
           .eq('car_id', id)
+          .maybeSingle(),
+        db
+          .from('bookings')
+          .select('*, customers(nama)')
+          .eq('car_id', id)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle(),
       ])
 
@@ -76,9 +83,18 @@ export async function getDetailMobil(id: string) {
         fundings: (fundings.data ?? []) as any[],
         sale: sale.data ?? null,
         profitSharing,
+        booking: booking.data ?? null,
       }
     },
-    { car: null as CarOverview | null, purchase: null as any, repairs: [] as any[], fundings: [] as any[], sale: null as any, profitSharing: null as any },
+    {
+      car: null as CarOverview | null,
+      purchase: null as any,
+      repairs: [] as any[],
+      fundings: [] as any[],
+      sale: null as any,
+      profitSharing: null as any,
+      booking: null as any,
+    },
   )
 }
 

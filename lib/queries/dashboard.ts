@@ -131,7 +131,7 @@ export async function getDataDashboard(rentang: Rentang) {
       db
         .from('v_car_overview')
         .select('id, merek, tipe, tahun, no_polisi, hpp, umur_stok_hari, status')
-        .in('status', ['DIBELI', 'PERBAIKAN', 'READY_STOCK'])
+        .in('status', ['DIBELI', 'PERBAIKAN', 'READY_STOCK', 'TERBOOKING'])
         .order('umur_stok_hari', { ascending: false })
         .limit(5),
     ])

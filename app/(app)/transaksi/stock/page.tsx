@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Boxes, Clock, PackageCheck, ShoppingCart, Wallet, Wrench } from 'lucide-react'
+import { Boxes, Clock, PackageCheck, PiggyBank, ShoppingCart, Wallet, Wrench } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { MetricCard } from '@/components/shared/metric-card'
 import { StockClient } from '@/components/transaksi/stock-client'
@@ -20,6 +20,7 @@ export default async function StockPage() {
   const ready = jumlah('READY_STOCK')
   const perbaikan = jumlah('PERBAIKAN')
   const dibeli = jumlah('DIBELI')
+  const terbooking = jumlah('TERBOOKING')
 
   const totalModal = data.reduce((s, c) => s + c.hpp, 0)
   const umurList = data.map((c) => c.umur_stok_hari ?? 0)
@@ -61,6 +62,13 @@ export default async function StockPage() {
           value={dibeli}
           icon={ShoppingCart}
           subtext="Belum masuk perbaikan"
+        />
+        <MetricCard
+          label="Terbooking"
+          value={terbooking}
+          icon={PiggyBank}
+          tone="warning"
+          subtext="DP masuk, menunggu pelunasan"
         />
         <MetricCard
           label="Nilai Modal Tertanam"

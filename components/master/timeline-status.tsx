@@ -12,6 +12,7 @@ export function TimelineStatus({
   tanggalBeli,
   tanggalPerbaikanMulai,
   tanggalReady,
+  tanggalBooking,
   tanggalJual,
   tanggalSelesai,
 }: {
@@ -19,6 +20,7 @@ export function TimelineStatus({
   tanggalBeli?: string | null
   tanggalPerbaikanMulai?: string | null
   tanggalReady?: string | null
+  tanggalBooking?: string | null
   tanggalJual?: string | null
   tanggalSelesai?: string | null
 }) {
@@ -26,6 +28,7 @@ export function TimelineStatus({
     DIBELI: tanggalBeli,
     PERBAIKAN: tanggalPerbaikanMulai,
     READY_STOCK: tanggalReady,
+    TERBOOKING: tanggalBooking,
     TERJUAL: tanggalJual,
     SELESAI: tanggalSelesai,
   }

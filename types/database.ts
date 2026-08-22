@@ -8,7 +8,7 @@
  */
 
 export type UserRole = 'admin' | 'holding' | 'investor'
-export type CarStatus = 'DIBELI' | 'PERBAIKAN' | 'READY_STOCK' | 'TERJUAL' | 'SELESAI'
+export type CarStatus = 'DIBELI' | 'PERBAIKAN' | 'READY_STOCK' | 'TERBOOKING' | 'TERJUAL' | 'SELESAI'
 export type SupplierType = 'LELANG' | 'MEDIATOR' | 'FOLLOWERS'
 export type VendorType = 'BENGKEL' | 'SALON' | 'SPARE_PART' | 'BODY_REPAIR' | 'LAINNYA'
 export type ContractStatus = 'MENUNGGU_DANA' | 'AKTIF' | 'SELESAI' | 'BATAL'

@@ -18,6 +18,7 @@ const STYLE: Record<string, string> = {
   DIBELI: 'bg-neutral-soft text-ink-muted',
   PERBAIKAN: 'bg-warning-soft text-warning-deep',
   READY_STOCK: 'bg-accent-soft text-accent',
+  TERBOOKING: 'bg-warning-soft text-warning-deep',
   TERJUAL: 'bg-success-soft text-success',
   SELESAI: 'bg-success-deepsoft text-success-deep',
   MENUNGGU_DANA: 'bg-warning-soft text-warning-deep',

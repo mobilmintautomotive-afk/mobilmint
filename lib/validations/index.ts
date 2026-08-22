@@ -203,6 +203,29 @@ export const penjualanSchema = z.object({
   catatan: opsional,
 })
 
+/* -------------------------------- Booking ------------------------------ */
+
+export const bookingSchema = z.object({
+  car_id: z.string().uuid({ message: 'Unit mobil wajib dipilih' }),
+  customer_id: z.string().uuid().optional().nullable(),
+  sales_person_id: z.string().uuid().optional().nullable(),
+  tanggal_booking: tanggal,
+  harga_sepakat: uang.refine((v) => v > 0, 'Harga sepakat wajib diisi'),
+  dp_amount: uang,
+  metode_bayar: z.enum(PAYMENT_METHOD).default('TRANSFER'),
+  catatan: opsional,
+})
+
+export const lunasiBookingSchema = z.object({
+  booking_id: z.string().uuid(),
+  tanggal_jual: tanggal,
+  harga_jual: uang.refine((v) => v > 0, 'Harga jual wajib diisi'),
+  komisi_sales: uang.default(0),
+  rincian_biaya_lain: rincianBiaya,
+  metode_bayar: z.enum(PAYMENT_METHOD).default('TRANSFER'),
+  catatan: opsional,
+})
+
 /* ----------------------------- Bagi Hasil ---------------------------- */
 
 export const bagiHasilSchema = z.object({

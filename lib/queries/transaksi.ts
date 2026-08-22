@@ -91,7 +91,7 @@ export async function getUnitBisaDiperbaiki() {
       await db
         .from('v_car_overview')
         .select('*')
-        .in('status', ['DIBELI', 'PERBAIKAN', 'READY_STOCK'])
+        .in('status', ['DIBELI', 'PERBAIKAN', 'READY_STOCK', 'TERBOOKING'])
         .order('created_at', { ascending: false }),
     ) as any[]
     return rows.map((r) => ({ ...r, hpp: num(r.hpp) }))
@@ -115,7 +115,7 @@ export async function getStockUnit() {
       await db
         .from('v_car_overview')
         .select('*')
-        .in('status', ['DIBELI', 'PERBAIKAN', 'READY_STOCK'])
+        .in('status', ['DIBELI', 'PERBAIKAN', 'READY_STOCK', 'TERBOOKING'])
         .order('tanggal_beli', { ascending: true }),
     ) as any[]
     return rows.map((r) => ({
@@ -154,6 +154,40 @@ export async function getDaftarPenjualan() {
       no_polisi: r.cars?.no_polisi ?? null,
       customer_nama: r.customers?.nama ?? '-',
       sales_nama: r.sales_persons?.nama ?? 'Tanpa sales',
+    }))
+  }, [] as any[])
+}
+
+/* -------------------------------- Booking ------------------------------ */
+
+/** Booking aktif (DP masuk, belum lunas) — unitnya berstatus TERBOOKING. */
+export async function getDaftarBooking() {
+  return aman(async (db) => {
+    const rows = unwrap(
+      await db
+        .from('bookings')
+        .select(
+          '*, cars(merek, tipe, tahun, no_polisi, status), customers(nama, no_tlp), sales_persons(nama)',
+        )
+        .eq('status', 'AKTIF')
+        .order('tanggal_booking', { ascending: false })
+        .range(0, LIST_LIMIT - 1),
+    ) as any[]
+    return rows.map((r) => ({
+      id: r.id as string,
+      no_booking: r.no_booking as string,
+      car_id: r.car_id as string,
+      unit: r.cars ? `${r.cars.merek} ${r.cars.tipe} ${r.cars.tahun}` : '-',
+      no_polisi: r.cars?.no_polisi ?? null,
+      customer_nama: r.customers?.nama ?? '-',
+      customer_tlp: r.customers?.no_tlp ?? null,
+      sales_nama: r.sales_persons?.nama ?? 'Tanpa sales',
+      tanggal_booking: r.tanggal_booking as string,
+      harga_sepakat: num(r.harga_sepakat),
+      dp_amount: num(r.dp_amount),
+      sisa_pelunasan: num(r.harga_sepakat) - num(r.dp_amount),
+      metode_bayar: r.metode_bayar as string,
+      catatan: r.catatan as string | null,
     }))
   }, [] as any[])
 }

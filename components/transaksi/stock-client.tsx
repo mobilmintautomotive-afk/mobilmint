@@ -36,6 +36,7 @@ const STATUS_STOK = [
   { value: 'READY_STOCK', label: 'Siap Dijual' },
   { value: 'PERBAIKAN', label: 'Proses Perbaikan' },
   { value: 'DIBELI', label: 'Baru Dibeli' },
+  { value: 'TERBOOKING', label: 'Terbooking' },
 ]
 
 export function StockClient({
