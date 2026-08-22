@@ -82,6 +82,7 @@ export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   BATAL: 'Batal',
 }
 
+/** Daftar umum, bukan enum tertutup — tipe_supplier cuma kolom teks, jadi form-nya bisa "Tambah Kategori". */
 export const SUPPLIER_TYPE = ['LELANG', 'MEDIATOR', 'FOLLOWERS'] as const
 export type SupplierType = (typeof SUPPLIER_TYPE)[number]
 export const SUPPLIER_TYPE_LABEL: Record<SupplierType, string> = {
@@ -90,6 +91,7 @@ export const SUPPLIER_TYPE_LABEL: Record<SupplierType, string> = {
   FOLLOWERS: 'Followers',
 }
 
+/** Daftar umum, bukan enum tertutup — tipe_vendor cuma kolom teks, jadi form-nya bisa "Tambah Kategori". */
 export const VENDOR_TYPE = ['BENGKEL', 'SALON', 'SPARE_PART', 'BODY_REPAIR', 'LAINNYA'] as const
 export type VendorType = (typeof VENDOR_TYPE)[number]
 export const VENDOR_TYPE_LABEL: Record<VendorType, string> = {

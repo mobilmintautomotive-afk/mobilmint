@@ -345,7 +345,7 @@ function PerbaikanFormDialog({
               options={vendors.map((v) => ({
                 value: v.id,
                 label: v.nama,
-                keterangan: VENDOR_TYPE_LABEL[v.tipe_vendor as keyof typeof VENDOR_TYPE_LABEL],
+                keterangan: VENDOR_TYPE_LABEL[v.tipe_vendor as keyof typeof VENDOR_TYPE_LABEL] ?? v.tipe_vendor,
               }))}
               value={vendorId}
               onChange={setVendorId}

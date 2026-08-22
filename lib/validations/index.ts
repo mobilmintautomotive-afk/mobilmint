@@ -4,9 +4,7 @@ import {
   CASH_TYPE_MANUAL,
   PAYMENT_METHOD,
   REPAIR_STATUS,
-  SUPPLIER_TYPE,
   USER_ROLE,
-  VENDOR_TYPE,
 } from '@/lib/constants'
 
 /** Semua pesan error berbahasa Indonesia (PRD 02 prinsip UI global). */
@@ -107,7 +105,7 @@ export const supplierSchema = z.object({
   nama: wajib('Nama supplier'),
   alamat: opsional,
   no_tlp: opsional,
-  tipe_supplier: z.enum(SUPPLIER_TYPE, { message: 'Tipe supplier wajib dipilih' }),
+  tipe_supplier: wajib('Tipe supplier'),
   catatan: opsional,
   is_active: z.boolean().default(true),
 })
@@ -117,7 +115,7 @@ export const vendorSchema = z.object({
   nama: wajib('Nama vendor'),
   alamat: opsional,
   no_tlp: opsional,
-  tipe_vendor: z.enum(VENDOR_TYPE, { message: 'Tipe vendor wajib dipilih' }),
+  tipe_vendor: wajib('Tipe vendor'),
   catatan: opsional,
   is_active: z.boolean().default(true),
 })

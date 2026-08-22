@@ -41,7 +41,7 @@ export default async function VendorPage() {
         ]}
         fields={[
           { name: 'nama', label: 'Nama Vendor', kind: 'text', required: true, placeholder: 'Contoh: Bengkel Jaya Motor' },
-          { name: 'tipe_vendor', label: 'Tipe Vendor', kind: 'select', required: true, options: opsiTipe },
+          { name: 'tipe_vendor', label: 'Tipe Vendor', kind: 'select', required: true, options: opsiTipe, creatable: true },
           { name: 'no_tlp', label: 'No. Telepon', kind: 'tel', placeholder: '08xxxxxxxxxx' },
           { name: 'alamat', label: 'Alamat', kind: 'text' },
           { name: 'catatan', label: 'Catatan', kind: 'textarea', fullWidth: true },

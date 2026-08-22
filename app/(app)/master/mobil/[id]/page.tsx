@@ -248,7 +248,7 @@ export default async function DetailMobilPage({ params }: { params: { id: string
                         <p className="text-label text-ink-muted">
                           {r.vendors?.nama ?? 'Tanpa vendor'}
                           {r.vendors?.tipe_vendor
-                            ? ` · ${VENDOR_TYPE_LABEL[r.vendors.tipe_vendor as keyof typeof VENDOR_TYPE_LABEL]}`
+                            ? ` · ${VENDOR_TYPE_LABEL[r.vendors.tipe_vendor as keyof typeof VENDOR_TYPE_LABEL] ?? r.vendors.tipe_vendor}`
                             : ''}
                         </p>
                       </div>

@@ -9,8 +9,6 @@
 
 export type UserRole = 'admin' | 'holding' | 'investor'
 export type CarStatus = 'DIBELI' | 'PERBAIKAN' | 'READY_STOCK' | 'TERBOOKING' | 'TERJUAL' | 'SELESAI'
-export type SupplierType = 'LELANG' | 'MEDIATOR' | 'FOLLOWERS'
-export type VendorType = 'BENGKEL' | 'SALON' | 'SPARE_PART' | 'BODY_REPAIR' | 'LAINNYA'
 export type ContractStatus = 'MENUNGGU_DANA' | 'AKTIF' | 'SELESAI' | 'BATAL'
 export type LedgerType =
   | 'SETORAN'
@@ -57,7 +55,8 @@ export interface Supplier {
   nama: string
   alamat: string | null
   no_tlp: string | null
-  tipe_supplier: SupplierType
+  /** Bukan enum tertutup — kolom teks biasa, bisa diisi kategori custom. */
+  tipe_supplier: string
   catatan: string | null
   is_active: boolean
   created_at: string
@@ -68,7 +67,8 @@ export interface Vendor {
   nama: string
   alamat: string | null
   no_tlp: string | null
-  tipe_vendor: VendorType
+  /** Bukan enum tertutup — kolom teks biasa, bisa diisi kategori custom. */
+  tipe_vendor: string
   catatan: string | null
   is_active: boolean
   created_at: string

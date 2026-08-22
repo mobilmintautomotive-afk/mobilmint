@@ -41,7 +41,7 @@ export default async function SupplierPage() {
         ]}
         fields={[
           { name: 'nama', label: 'Nama Supplier', kind: 'text', required: true, placeholder: 'Contoh: Balai Lelang JBA' },
-          { name: 'tipe_supplier', label: 'Tipe Supplier', kind: 'select', required: true, options: opsiTipe },
+          { name: 'tipe_supplier', label: 'Tipe Supplier', kind: 'select', required: true, options: opsiTipe, creatable: true },
           { name: 'no_tlp', label: 'No. Telepon', kind: 'tel', placeholder: '08xxxxxxxxxx' },
           { name: 'alamat', label: 'Alamat', kind: 'text' },
           { name: 'catatan', label: 'Catatan', kind: 'textarea', fullWidth: true },

@@ -13,7 +13,14 @@ import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { PhotoUpload } from '@/components/forms/photo-upload'
 import { Button } from '@/components/ui/button'
 import { Field, Input, MoneyInput, Textarea } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  SearchableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/primitives'
 import { formatAngka, formatPersen } from '@/lib/format'
 import type { AksiHasil } from '@/app/actions/_helper'
@@ -48,6 +55,8 @@ export type FieldSpec = {
   required?: boolean
   placeholder?: string
   options?: { value: string; label: string }[]
+  /** Kalau true, dropdown 'select' bisa diketik bebas + tambah opsi baru (kolomnya teks biasa, bukan enum tertutup). */
+  creatable?: boolean
   fullWidth?: boolean
   hint?: string
   readOnly?: boolean
@@ -376,7 +385,25 @@ function FieldRender({
           onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
         />,
       )
-    case 'select':
+    case 'select': {
+      if (spec.creatable) {
+        const nilai = value ? String(value) : ''
+        const opsi = spec.options ?? []
+        const punyaNilai = !nilai || opsi.some((o) => o.value === nilai)
+        const daftar = punyaNilai ? opsi : [{ value: nilai, label: nilai }, ...opsi]
+        return wrapper(
+          <SearchableSelect
+            id={id}
+            options={daftar}
+            value={nilai}
+            onChange={onChange}
+            placeholder={spec.placeholder ?? 'Pilih...'}
+            searchPlaceholder="Cari atau ketik kategori baru..."
+            creatable
+            createLabel={(q) => `Tambahkan kategori "${q}"`}
+          />,
+        )
+      }
       return wrapper(
         <Select value={value ? String(value) : ''} onValueChange={onChange}>
           <SelectTrigger id={id}>
@@ -391,6 +418,7 @@ function FieldRender({
           </SelectContent>
         </Select>,
       )
+    }
     case 'date':
       return wrapper(
         <Input id={id} type="date" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />,
