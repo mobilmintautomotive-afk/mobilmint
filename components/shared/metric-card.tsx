@@ -17,7 +17,7 @@ export type MetricFormat = 'money' | 'number' | 'percent' | 'text'
  */
 function ukuranAngka(teks: string, hero: boolean) {
   const panjang = teks.length > 13
-  if (hero) return panjang ? 'text-[30px] xl:text-[26px] 2xl:text-metric' : 'text-metric-hero'
+  if (hero) return panjang ? 'text-[30px] xl:text-[26px] 2xl:text-metric' : 'text-metric-hero xl:text-[32px] 2xl:text-metric-hero'
   if (panjang) return 'text-[26px] xl:text-[20px] 2xl:text-[27px]'
   return 'text-[26px] xl:text-[24px] 2xl:text-metric'
 }
