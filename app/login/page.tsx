@@ -23,14 +23,16 @@ export default function LoginPage() {
           backgroundPosition: 'center',
         }}
       >
-        <Image
-          src="/logo-mobilmint-white.png"
-          alt="MobilMint"
-          width={220}
-          height={220}
-          className="h-32 w-32 shrink-0 self-start drop-shadow-md xl:h-40 xl:w-40"
-          priority
-        />
+        <div className="flex w-full justify-center">
+          <Image
+            src="/logo-mobilmint-white.png"
+            alt="MobilMint"
+            width={220}
+            height={220}
+            className="h-32 w-32 shrink-0 drop-shadow-md xl:h-40 xl:w-40"
+            priority
+          />
+        </div>
 
         <div className="space-y-7">
           <div className="space-y-2">
