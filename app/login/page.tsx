@@ -28,7 +28,7 @@ export default function LoginPage() {
           alt="MobilMint"
           width={220}
           height={220}
-          className="h-16 w-auto drop-shadow-md"
+          className="h-16 w-16 shrink-0 self-start drop-shadow-md"
           priority
         />
 
