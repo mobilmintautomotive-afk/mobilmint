@@ -17,7 +17,6 @@ export const metadata: Metadata = {
     template: `%s · ${APP_NAME}`,
   },
   description: APP_TAGLINE,
-  icons: { icon: '/logo-mobilmint.jpeg' },
 }
 
 export const viewport: Viewport = {

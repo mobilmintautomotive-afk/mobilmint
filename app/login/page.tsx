@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { BadgeCheck, ShieldCheck, TrendingUp } from 'lucide-react'
-import { Logo } from '@/components/layout/logo'
 import { LoginForm } from './login-form'
 
 export const metadata: Metadata = { title: 'Masuk' }
@@ -18,12 +18,19 @@ export default function LoginPage() {
         className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-brand p-10 lg:flex xl:p-14"
         style={{
           backgroundImage:
-            "linear-gradient(160deg, rgba(0,49,87,0.92), rgba(0,110,173,0.8)), url('/login-showroom.jpg')",
+            "linear-gradient(165deg, rgba(0,55,102,0.82) 0%, rgba(0,110,173,0.55) 55%, rgba(56,169,224,0.35) 100%), url('/login-showroom.jpg')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
       >
-        <Logo size="lg" className="text-white" />
+        <Image
+          src="/logo-mobilmint-white.png"
+          alt="MobilMint"
+          width={220}
+          height={220}
+          className="h-16 w-auto drop-shadow-md"
+          priority
+        />
 
         <div className="space-y-7">
           <div className="space-y-2">
@@ -32,7 +39,9 @@ export default function LoginPage() {
               <br />
               Kondisi Seger.
             </h1>
-            <p className="text-[18px] text-white/85">Investasi Nyaman, Untung Terang.</p>
+            <p className="text-[18px] font-semibold tracking-wide text-white/90">
+              BERGARANSI MESIN &amp; MATIC
+            </p>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -57,7 +66,14 @@ export default function LoginPage() {
       <div className="flex w-full flex-col items-center justify-center bg-surface px-6 py-12 lg:w-1/2">
         <div className="w-full max-w-sm">
           <div className="mb-6 lg:hidden">
-            <Logo size="md" />
+            <Image
+              src="/logo-mobilmint.jpeg"
+              alt="MobilMint"
+              width={140}
+              height={140}
+              className="h-12 w-auto"
+              priority
+            />
           </div>
 
           <h2 className="text-[28px] font-bold text-ink">Masuk ke MobilMint</h2>
