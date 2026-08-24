@@ -26,7 +26,7 @@ export default async function DashboardInvestorPage() {
         <EmptyState
           icon={Wallet}
           title="Belum ada investor yang dipilih"
-          description="Gunakan tombol role di pojok kanan atas untuk memilih investor yang ingin dilihat. Setelah login aktif, halaman ini otomatis menampilkan data akun Anda sendiri."
+          description="Buka menu akun di pojok kanan atas, lalu pilih investor lewat 'Lihat Sebagai' untuk melihat halaman ini seperti yang mereka lihat."
         />
       </div>
     )

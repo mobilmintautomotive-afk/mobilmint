@@ -1,8 +1,11 @@
 'use client'
 
 import * as React from 'react'
-import { ChevronDown, KeyRound, LogOut, User } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ChevronDown, Eye, KeyRound, LogOut, ShieldCheck, User, Users } from 'lucide-react'
+import { toast } from 'sonner'
 import { logout } from '@/app/actions/auth'
+import { setViewAs, clearViewAs } from '@/app/actions/view-as'
 import { RoleBadge } from '@/components/shared/status-badge'
 import type { UserRole } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -15,16 +18,52 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/primitives'
 
+export type InvestorOption = { id: string; nama: string }
+
 export function AccountMenu({
   nama,
   email,
   role,
+  isAdmin,
+  viewingAsLabel,
+  investors,
 }: {
   nama: string
   email: string
   role: UserRole
+  isAdmin: boolean
+  viewingAsLabel: string | null
+  investors: InvestorOption[]
 }) {
+  const router = useRouter()
   const [pending, startTransition] = React.useTransition()
+
+  function pilihHolding() {
+    startTransition(async () => {
+      await setViewAs('holding')
+      toast.success('Sekarang melihat sebagai Holding')
+      router.push('/dashboard')
+      router.refresh()
+    })
+  }
+
+  function pilihInvestor(inv: InvestorOption) {
+    startTransition(async () => {
+      await setViewAs('investor', inv.id)
+      toast.success(`Sekarang melihat sebagai ${inv.nama}`)
+      router.push('/investor')
+      router.refresh()
+    })
+  }
+
+  function kembaliKeAdmin() {
+    startTransition(async () => {
+      await clearViewAs()
+      toast.success('Kembali ke tampilan Admin')
+      router.push('/dashboard')
+      router.refresh()
+    })
+  }
 
   return (
     <DropdownMenu>
@@ -44,7 +83,7 @@ export function AccountMenu({
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>
           <div className="space-y-1">
             <p className="truncate font-medium text-ink">{nama}</p>
@@ -61,6 +100,55 @@ export function AccountMenu({
             Ganti Password
           </a>
         </DropdownMenuItem>
+
+        {isAdmin ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="flex items-center gap-1.5 text-ink-muted">
+              <Eye className="size-3.5" />
+              Lihat Sebagai
+            </DropdownMenuLabel>
+
+            {viewingAsLabel ? (
+              <DropdownMenuItem onSelect={kembaliKeAdmin} className="flex items-center gap-2">
+                <ShieldCheck className="size-4" />
+                Admin (tampilan asli)
+              </DropdownMenuItem>
+            ) : null}
+
+            <DropdownMenuItem
+              onSelect={pilihHolding}
+              className={cn(
+                'flex items-center gap-2',
+                !viewingAsLabel && role === 'holding' && 'bg-accent-soft text-accent',
+              )}
+            >
+              <Users className="size-4" />
+              Holding
+            </DropdownMenuItem>
+
+            {investors.length === 0 ? (
+              <p className="px-3 py-2 text-label text-ink-muted">Belum ada data investor.</p>
+            ) : (
+              <div className="mm-scroll max-h-40 overflow-y-auto">
+                {investors.map((inv) => (
+                  <DropdownMenuItem
+                    key={inv.id}
+                    onSelect={() => pilihInvestor(inv)}
+                    className={cn(
+                      'pl-8',
+                      viewingAsLabel === `Investor — ${inv.nama}` && 'bg-accent-soft text-accent',
+                    )}
+                  >
+                    {inv.nama}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            )}
+          </>
+        ) : null}
+
+        <DropdownMenuSeparator />
 
         <DropdownMenuItem
           onSelect={() => startTransition(() => logout())}
