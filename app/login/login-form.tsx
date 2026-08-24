@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { Eye, EyeOff, Lock, LogIn, Mail } from 'lucide-react'
 import { login } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/input'
@@ -27,20 +27,25 @@ export function LoginForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <Field label="Email" required htmlFor="login-email">
-        <Input
-          id="login-email"
-          type="email"
-          autoComplete="username"
-          required
-          autoFocus
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="nama@email.com"
-        />
+        <div className="relative">
+          <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
+          <Input
+            id="login-email"
+            type="email"
+            autoComplete="username"
+            required
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="nama@email.com"
+            className="pl-10"
+          />
+        </div>
       </Field>
 
       <Field label="Password" required htmlFor="login-password" error={error ?? undefined}>
         <div className="relative">
+          <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-subtle" />
           <Input
             id="login-password"
             type={showPassword ? 'text' : 'password'}
@@ -48,7 +53,8 @@ export function LoginForm() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="pr-10"
+            placeholder="Masukkan password"
+            className="pl-10 pr-10"
           />
           <button
             type="button"
@@ -61,6 +67,10 @@ export function LoginForm() {
           </button>
         </div>
       </Field>
+
+      <div className="flex justify-end">
+        <span className="text-label text-ink-subtle">Lupa password?</span>
+      </div>
 
       <Button type="submit" className="w-full" loading={pending}>
         <LogIn className="size-4" />
