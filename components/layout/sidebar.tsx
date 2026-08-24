@@ -77,11 +77,7 @@ export function Sidebar({
         </nav>
 
         <div className="hidden shrink-0 border-t border-line px-5 py-3 lg:block">
-          <p className="text-[11px] leading-relaxed text-ink-subtle">
-            MobilMint MVP
-            <br />
-            Mode development — belum ada login
-          </p>
+          <p className="text-[11px] leading-relaxed text-ink-subtle">MobilMint</p>
         </div>
       </aside>
     </>

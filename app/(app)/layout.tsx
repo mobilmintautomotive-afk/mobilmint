@@ -1,17 +1,14 @@
+import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/layout/app-shell'
 import { getCurrentUser } from '@/lib/dev-role'
-import { getInvestorRingkas } from '@/lib/queries/master'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
-  const investors = await getInvestorRingkas()
+  if (!user) redirect('/login')
+  if (user.must_change_password) redirect('/ganti-password')
 
   return (
-    <AppShell
-      role={user?.role ?? 'admin'}
-      investorId={user?.investor_id ?? null}
-      investors={investors}
-    >
+    <AppShell nama={user.nama} email={user.email} role={user.role}>
       {children}
     </AppShell>
   )

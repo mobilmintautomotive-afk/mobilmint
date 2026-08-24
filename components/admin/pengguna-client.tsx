@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Eye, KeyRound, Pencil, Plus, ShieldCheck, UserMinus, UserPlus } from 'lucide-react'
+import { Check, Copy, KeyRound, Pencil, ShieldCheck, UserMinus, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
@@ -13,6 +13,14 @@ import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/input'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   SearchableSelect,
   Select,
   SelectContent,
@@ -20,8 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { setDevRole } from '@/app/actions/dev-role'
-import { simpanPengguna, ubahStatusPengguna, simpanInvestor } from '@/app/actions/master'
+import { daftarkanPengguna, perbaruiPengguna, resetPasswordPengguna } from '@/app/actions/users'
+import { ubahStatusPengguna } from '@/app/actions/users'
+import { simpanInvestor } from '@/app/actions/master'
 import { USER_ROLE, USER_ROLE_LABEL, type UserRole } from '@/lib/constants'
 import { formatTanggal } from '@/lib/format'
 import type { Profile } from '@/types/database'
@@ -40,6 +49,9 @@ export function PenggunaClient({
   const [open, setOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<BarisPengguna | null>(null)
   const [fRole, setFRole] = React.useState('semua')
+  const [passwordBaru, setPasswordBaru] = React.useState<{ nama: string; password: string } | null>(
+    null,
+  )
   const { confirm, dialog } = useConfirm()
   const { jalankan } = useAksi()
 
@@ -48,11 +60,17 @@ export function PenggunaClient({
     [rows, fRole],
   )
 
-  async function masukSebagai(p: BarisPengguna) {
-    if (!p.investor_id) return
-    await setDevRole('investor', p.investor_id)
-    toast.success(`Sekarang melihat sebagai ${p.nama}`)
-    window.location.href = '/investor'
+  async function resetPassword(p: BarisPengguna) {
+    confirm({
+      title: 'Reset password akun ini?',
+      description: `Password lama ${p.nama} akan diganti dengan password sementara baru. Dia wajib menggantinya sendiri saat login berikutnya.`,
+      confirmLabel: 'Ya, reset',
+      onConfirm: async () => {
+        const res = await resetPasswordPengguna(p.id)
+        if (!res.ok) throw new Error(res.error)
+        setPasswordBaru({ nama: p.nama, password: res.data!.passwordSementara })
+      },
+    })
   }
 
   const columns = React.useMemo<ColumnDef<BarisPengguna, any>[]>(
@@ -109,21 +127,10 @@ export function PenggunaClient({
                   setOpen(true)
                 },
               },
-              ...(row.original.role === 'investor' && row.original.investor_id
-                ? [
-                    {
-                      label: 'Masuk sebagai',
-                      icon: Eye,
-                      onSelect: () => masukSebagai(row.original),
-                    },
-                  ]
-                : []),
               {
                 label: 'Reset Password',
                 icon: KeyRound,
-                disabled: true,
-                alasan: 'Tersedia setelah Supabase Auth aktif (Fase 5)',
-                onSelect: () => {},
+                onSelect: () => resetPassword(row.original),
               },
               {
                 label: row.original.is_active ? 'Nonaktifkan' : 'Aktifkan kembali',
@@ -183,7 +190,7 @@ export function PenggunaClient({
               setOpen(true)
             }}
           >
-            <Plus />
+            <UserPlus />
             <span className="hidden sm:inline">Tambah Pengguna</span>
             <span className="sm:hidden">Tambah</span>
           </Button>
@@ -200,7 +207,7 @@ export function PenggunaClient({
                   setOpen(true)
                 }}
               >
-                <Plus />
+                <UserPlus />
                 Tambah Pengguna
               </Button>
             }
@@ -228,9 +235,62 @@ export function PenggunaClient({
         onOpenChange={setOpen}
         pengguna={editing}
         investors={investors}
+        onPasswordSementara={(nama, password) => setPasswordBaru({ nama, password })}
       />
+
+      <PasswordSementaraDialog info={passwordBaru} onOpenChange={() => setPasswordBaru(null)} />
+
       {dialog}
     </>
+  )
+}
+
+function PasswordSementaraDialog({
+  info,
+  onOpenChange,
+}: {
+  info: { nama: string; password: string } | null
+  onOpenChange: (v: boolean) => void
+}) {
+  const [tersalin, setTersalin] = React.useState(false)
+
+  React.useEffect(() => {
+    if (info) setTersalin(false)
+  }, [info])
+
+  function salin() {
+    if (!info) return
+    navigator.clipboard.writeText(info.password).then(() => {
+      setTersalin(true)
+      toast.success('Password disalin')
+    })
+  }
+
+  return (
+    <Dialog open={Boolean(info)} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Password Sementara</DialogTitle>
+          <DialogDescription>
+            Bagikan password ini ke <strong>{info?.nama}</strong> secara pribadi (WhatsApp, dsb).
+            Dia akan diminta ganti password sendiri saat login pertama. Password ini tidak
+            ditampilkan lagi setelah dialog ini ditutup.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-line-strong bg-surface-alt px-4 py-3">
+          <code className="text-body font-semibold tracking-wide text-ink">{info?.password}</code>
+          <Button type="button" size="sm" variant="secondary" onClick={salin}>
+            {tersalin ? <Check className="text-success" /> : <Copy />}
+            {tersalin ? 'Tersalin' : 'Salin'}
+          </Button>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)}>Selesai</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -239,17 +299,18 @@ function PenggunaFormDialog({
   onOpenChange,
   pengguna,
   investors,
+  onPasswordSementara,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   pengguna: BarisPengguna | null
   investors: { id: string; nama: string; sudah_punya_akun: boolean }[]
+  onPasswordSementara: (nama: string, password: string) => void
 }) {
   const [nama, setNama] = React.useState('')
   const [email, setEmail] = React.useState('')
   const [role, setRole] = React.useState<string>('investor')
   const [investorId, setInvestorId] = React.useState('')
-  const [metode, setMetode] = React.useState<'undangan' | 'password'>('undangan')
   const [openInvestorBaru, setOpenInvestorBaru] = React.useState(false)
   const [namaBaru, setNamaBaru] = React.useState('')
 
@@ -259,7 +320,6 @@ function PenggunaFormDialog({
     setEmail(pengguna?.email ?? '')
     setRole(pengguna?.role ?? 'investor')
     setInvestorId(pengguna?.investor_id ?? '')
-    setMetode('undangan')
   }, [open, pengguna])
 
   // Investor yang belum punya akun + investor yang sedang diedit
@@ -273,19 +333,28 @@ function PenggunaFormDialog({
         open={open}
         onOpenChange={onOpenChange}
         title={pengguna ? 'Edit Pengguna' : 'Tambah Pengguna'}
-        description="Akun investor wajib dihubungkan ke data investor supaya dashboard-nya tahu data siapa yang ditampilkan."
-        successMessage="Data pengguna tersimpan"
+        description={
+          pengguna
+            ? 'Akun investor wajib dihubungkan ke data investor supaya dashboard-nya tahu data siapa yang ditampilkan.'
+            : 'Akun login dibuat otomatis dengan password sementara — bagikan ke penggunanya setelah tersimpan.'
+        }
+        successMessage={pengguna ? 'Data pengguna tersimpan' : undefined}
         disabled={!nama || !email || (role === 'investor' && !investorId)}
-        onSubmit={() =>
-          simpanPengguna({
+        onSubmit={async () => {
+          const payload = {
             ...(pengguna ? { id: pengguna.id } : {}),
             nama,
             email,
             role,
             investor_id: role === 'investor' ? investorId : null,
             is_active: pengguna?.is_active ?? true,
-          })
-        }
+          }
+          if (pengguna) return perbaruiPengguna(payload)
+
+          const res = await daftarkanPengguna(payload)
+          if (res.ok && res.data) onPasswordSementara(nama, res.data.passwordSementara)
+          return res
+        }}
       >
         <div className="space-y-4">
           <FormGrid>
@@ -338,20 +407,6 @@ function PenggunaFormDialog({
                   </button>
                 }
               />
-            </Field>
-          ) : null}
-
-          {!pengguna ? (
-            <Field label="Metode Akses" hint="Aktif setelah Supabase Auth dipasang di Fase 5">
-              <Select value={metode} onValueChange={(v) => setMetode(v as any)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="undangan">Kirim Undangan via Email</SelectItem>
-                  <SelectItem value="password">Set Password Sementara</SelectItem>
-                </SelectContent>
-              </Select>
             </Field>
           ) : null}
         </div>

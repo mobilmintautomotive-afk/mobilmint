@@ -21,12 +21,6 @@ export default async function KelolaAksesPage() {
         breadcrumb={[{ label: 'Pengaturan' }, { label: 'Kelola Akses' }]}
       />
 
-      <div className="mb-5 rounded-lg bg-warning-soft p-4 text-label text-warning-deep">
-        <strong>Mode development.</strong> Halaman ini baru menyimpan data ke tabel{' '}
-        <code>profiles</code> — akun login belum benar-benar dibuat. Penyambungan ke Supabase Auth
-        (undangan email &amp; set password) dikerjakan di Fase 5.
-      </div>
-
       <PenggunaClient rows={pengguna.data} error={pengguna.error} investors={investor.data} />
     </>
   )

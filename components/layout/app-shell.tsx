@@ -6,17 +6,17 @@ import { TooltipProvider } from '@/components/ui/primitives'
 import type { UserRole } from '@/lib/constants'
 import { Sidebar } from './sidebar'
 import { Logo } from './logo'
-import { RoleSwitcher, type InvestorOption } from './role-switcher'
+import { AccountMenu } from './account-menu'
 
 export function AppShell({
+  nama,
+  email,
   role,
-  investorId,
-  investors,
   children,
 }: {
+  nama: string
+  email: string
   role: UserRole
-  investorId: string | null
-  investors: InvestorOption[]
   children: React.ReactNode
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false)
@@ -42,8 +42,7 @@ export function AppShell({
             </span>
 
             <div className="ml-auto flex items-center gap-2">
-              {/* FASE 5: hapus baris di bawah ini, ganti dengan menu akun */}
-              <RoleSwitcher role={role} investorId={investorId} investors={investors} />
+              <AccountMenu nama={nama} email={email} role={role} />
             </div>
           </header>
 

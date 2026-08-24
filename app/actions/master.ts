@@ -13,7 +13,6 @@ import {
   penarikanSchema,
   opexSchema,
   asetSchema,
-  penggunaSchema,
   pengaturanSchema,
 } from '@/lib/validations'
 
@@ -215,25 +214,6 @@ export async function simpanAset(input: unknown) {
 }
 export async function hapusAset(id: string) {
   return hapus('company_assets', id, ['/transaksi/aset', '/laporan/neraca'])
-}
-
-/* ------------------------------ Pengguna ----------------------------- */
-
-/**
- * Fase 4: hanya menulis ke tabel `profiles`, belum membuat user auth.
- * Fase 5 akan menyambungkan ke supabase.auth.admin.inviteUserByEmail.
- */
-export async function simpanPengguna(input: unknown) {
-  return simpan('profiles', penggunaSchema, input, ['/admin/users'])
-}
-
-export async function ubahStatusPengguna(id: string, aktif: boolean) {
-  const res = await jalankan(async (db) => {
-    cek(await db.from('profiles').update({ is_active: aktif }).eq('id', id).select('id'))
-    return undefined
-  })
-  if (res.ok) revalidatePath('/admin/users')
-  return res
 }
 
 /* ----------------------------- Pengaturan ---------------------------- */
