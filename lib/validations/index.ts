@@ -4,6 +4,7 @@ import {
   CASH_TYPE_MANUAL,
   PAYMENT_METHOD,
   REPAIR_STATUS,
+  TITIP_JUAL_SKEMA,
   USER_ROLE,
 } from '@/lib/constants'
 
@@ -222,6 +223,48 @@ export const lunasiBookingSchema = z.object({
   rincian_biaya_lain: rincianBiaya,
   metode_bayar: z.enum(PAYMENT_METHOD).default('TRANSFER'),
   catatan: opsional,
+})
+
+/* ------------------------------ Titip Jual ---------------------------- */
+
+export const titipJualSchema = z
+  .object({
+    skema: z.enum(TITIP_JUAL_SKEMA, { message: 'Skema wajib dipilih' }),
+    merek: wajib('Merek'),
+    tipe: wajib('Tipe'),
+    tahun: z.coerce
+      .number({ message: 'Tahun harus berupa angka' })
+      .int('Tahun harus bilangan bulat')
+      .min(1980, 'Tahun minimal 1980')
+      .max(new Date().getFullYear() + 1, 'Tahun tidak valid'),
+    no_polisi: opsional,
+    nama_pemilik: wajib('Nama pemilik'),
+    no_tlp_pemilik: opsional,
+    tanggal_masuk: tanggal,
+    fee_jasa: uang,
+    harga_setor: uang.optional().nullable(),
+    catatan: opsional,
+  })
+  .refine((v) => v.skema !== 'KONSINYASI' || (v.harga_setor ?? 0) > 0, {
+    message: 'Harga setor wajib diisi untuk skema konsinyasi',
+    path: ['harga_setor'],
+  })
+
+export const selesaikanJasaKontenSchema = z.object({
+  id: z.string().uuid(),
+  tanggal_selesai: tanggal,
+})
+
+export const jualKonsinyasiSchema = z.object({
+  id: z.string().uuid(),
+  tanggal_selesai: tanggal,
+  harga_jual: uang.refine((v) => v > 0, 'Harga jual wajib diisi'),
+})
+
+export const tarikKonsinyasiSchema = z.object({
+  id: z.string().uuid(),
+  tanggal_selesai: tanggal,
+  biaya_penarikan: uang,
 })
 
 /* ----------------------------- Bagi Hasil ---------------------------- */

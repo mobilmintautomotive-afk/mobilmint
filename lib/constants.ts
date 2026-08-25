@@ -72,6 +72,33 @@ export const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
   BATAL: 'Batal',
 }
 
+/**
+ * Titip Jual — dua skema (dari kesepakatan dengan mitra):
+ * JASA_KONTEN: unit ga ditahan, cuma numpang 1 hari buat konten, sekali fee.
+ * KONSINYASI: unit ditahan di garasi sampai laku, ga ada fee di depan,
+ *   untung MobilMint = harga jual dikurangi harga setor ke pemilik. Kalau
+ *   ditarik sebelum laku, kena biaya penarikan (besarannya sama kaya fee
+ *   JASA_KONTEN).
+ */
+export const TITIP_JUAL_SKEMA = ['JASA_KONTEN', 'KONSINYASI'] as const
+export type TitipJualSkema = (typeof TITIP_JUAL_SKEMA)[number]
+export const TITIP_JUAL_SKEMA_LABEL: Record<TitipJualSkema, string> = {
+  JASA_KONTEN: 'Jasa Konten',
+  KONSINYASI: 'Konsinyasi',
+}
+
+export const TITIP_JUAL_STATUS = ['PROSES', 'SELESAI', 'TERJUAL', 'DITARIK'] as const
+export type TitipJualStatus = (typeof TITIP_JUAL_STATUS)[number]
+export const TITIP_JUAL_STATUS_LABEL: Record<TitipJualStatus, string> = {
+  PROSES: 'Proses',
+  SELESAI: 'Selesai',
+  TERJUAL: 'Terjual',
+  DITARIK: 'Ditarik',
+}
+
+/** Fee default jasa konten / biaya penarikan konsinyasi — bisa disesuaikan per transaksi. */
+export const FEE_TITIP_JUAL_DEFAULT = 2_500_000
+
 export const CONTRACT_STATUS = ['MENUNGGU_DANA', 'AKTIF', 'SELESAI', 'BATAL'] as const
 export type ContractStatus = (typeof CONTRACT_STATUS)[number]
 
@@ -180,6 +207,7 @@ export const CASH_TYPE = [
   'TRANSFER_MASUK',
   'TRANSFER_KELUAR',
   'PENYESUAIAN',
+  'PENDAPATAN_TITIP_JUAL',
 ] as const
 export type CashType = (typeof CASH_TYPE)[number]
 
@@ -197,6 +225,7 @@ export const CASH_TYPE_LABEL: Record<CashType, string> = {
   TRANSFER_MASUK: 'Transfer Masuk',
   TRANSFER_KELUAR: 'Transfer Keluar',
   PENYESUAIAN: 'Penyesuaian',
+  PENDAPATAN_TITIP_JUAL: 'Pendapatan Titip Jual',
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   PackageCheck,
   Receipt,
   ReceiptText,
+  Repeat,
   Scale,
   Settings,
   ShieldCheck,
@@ -87,6 +88,7 @@ export const NAV_BACKOFFICE: NavGroup[] = [
       { label: 'Salesman', href: '/master/sales', icon: UserRoundCheck },
       { label: 'Booking', href: '/transaksi/booking', icon: BookmarkCheck },
       { label: 'Penjualan', href: '/transaksi/penjualan', icon: Receipt },
+      { label: 'Titip Jual', href: '/transaksi/titip-jual', icon: Repeat },
     ],
   },
   {

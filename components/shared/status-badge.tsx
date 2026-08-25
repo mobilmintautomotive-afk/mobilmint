@@ -3,10 +3,12 @@ import {
   CAR_STATUS_LABEL,
   CONTRACT_STATUS_LABEL,
   REPAIR_STATUS_LABEL,
+  TITIP_JUAL_STATUS_LABEL,
   USER_ROLE_LABEL,
   type CarStatus,
   type ContractStatus,
   type RepairStatus,
+  type TitipJualStatus,
   type UserRole,
 } from '@/lib/constants'
 
@@ -25,6 +27,7 @@ const STYLE: Record<string, string> = {
   AKTIF: 'bg-success-soft text-success',
   BATAL: 'bg-danger-soft text-danger',
   PROSES: 'bg-warning-soft text-warning-deep',
+  DITARIK: 'bg-danger-soft text-danger',
   admin: 'bg-accent-soft text-accent',
   holding: 'bg-neutral-soft text-ink-muted',
   investor: 'bg-success-soft text-success',
@@ -34,13 +37,14 @@ export function StatusBadge({
   status,
   className,
 }: {
-  status: CarStatus | ContractStatus | RepairStatus | string
+  status: CarStatus | ContractStatus | RepairStatus | TitipJualStatus | string
   className?: string
 }) {
   const label =
     CAR_STATUS_LABEL[status as CarStatus] ??
     CONTRACT_STATUS_LABEL[status as ContractStatus] ??
     REPAIR_STATUS_LABEL[status as RepairStatus] ??
+    TITIP_JUAL_STATUS_LABEL[status as TitipJualStatus] ??
     status
   return <span className={cn(base, STYLE[status] ?? STYLE.DIBELI, className)}>{label}</span>
 }

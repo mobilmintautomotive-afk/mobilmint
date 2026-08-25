@@ -317,3 +317,21 @@ export async function getPencairanDana() {
     })
   }, [] as any[])
 }
+
+/* ------------------------------ Titip Jual ---------------------------- */
+
+export async function getDaftarTitipJual() {
+  return aman(async (db) => {
+    const rows = unwrap(
+      await db.from('consignments').select('*').order('created_at', { ascending: false }).range(0, LIST_LIMIT - 1),
+    ) as any[]
+    return rows.map((r) => ({
+      ...r,
+      tahun: Number(r.tahun),
+      fee_jasa: num(r.fee_jasa),
+      harga_setor: r.harga_setor == null ? null : num(r.harga_setor),
+      harga_jual: r.harga_jual == null ? null : num(r.harga_jual),
+      pendapatan: r.pendapatan == null ? null : num(r.pendapatan),
+    }))
+  }, [] as any[])
+}
