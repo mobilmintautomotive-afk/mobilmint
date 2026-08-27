@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Ban, BookmarkCheck, CheckCircle2, Plus, UserPlus } from 'lucide-react'
+import { Ban, BookmarkCheck, CheckCircle2, Pencil, Plus, UserPlus } from 'lucide-react'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { buatBooking, batalkanBooking } from '@/app/actions/bookings'
+import { buatBooking, perbaruiBooking, batalkanBooking } from '@/app/actions/bookings'
 import { simpanCustomer } from '@/app/actions/master'
 import { formatRupiah, formatTanggal, todayJakarta } from '@/lib/format'
 import { PAYMENT_METHOD, PAYMENT_METHOD_LABEL } from '@/lib/constants'
@@ -31,8 +31,10 @@ type Booking = {
   car_id: string
   unit: string
   no_polisi: string | null
+  customer_id: string | null
   customer_nama: string
   customer_tlp: string | null
+  sales_person_id: string | null
   sales_nama: string
   tanggal_booking: string
   harga_sepakat: number
@@ -70,6 +72,7 @@ export function BookingClient({
   sales: { id: string; nama: string; komisi_default: number }[]
 }) {
   const [openBaru, setOpenBaru] = React.useState(false)
+  const [editing, setEditing] = React.useState<Booking | null>(null)
   const { confirm, dialog } = useConfirm()
   const { jalankan } = useAksi()
 
@@ -120,6 +123,11 @@ export function BookingClient({
           canWrite ? (
             <RowActions
               actions={[
+                {
+                  label: 'Edit Booking',
+                  icon: Pencil,
+                  onSelect: () => setEditing(row.original),
+                },
                 {
                   label: 'Lunasi',
                   icon: CheckCircle2,
@@ -210,22 +218,32 @@ export function BookingClient({
         customers={customers}
         sales={sales}
       />
+      <BookingFormDialog
+        open={Boolean(editing)}
+        onOpenChange={(v) => !v && setEditing(null)}
+        booking={editing}
+        units={units}
+        customers={customers}
+        sales={sales}
+      />
       {dialog}
     </div>
   )
 }
 
-/* ------------------------- Form booking baru ------------------------ */
+/* --------------------- Form booking baru / edit ---------------------- */
 
 function BookingFormDialog({
   open,
   onOpenChange,
+  booking = null,
   units,
   customers,
   sales,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
+  booking?: Booking | null
   units: UnitOption[]
   customers: { id: string; nama: string; no_tlp: string | null }[]
   sales: { id: string; nama: string; komisi_default: number }[]
@@ -244,15 +262,16 @@ function BookingFormDialog({
 
   React.useEffect(() => {
     if (!open) return
-    setCarId('')
-    setCustomerId('')
-    setSalesId('')
-    setTanggal(todayJakarta())
-    setHargaSepakat(0)
-    setDpAmount(0)
-    setMetode('TRANSFER')
-    setCatatan('')
-  }, [open])
+    setCarId(booking?.car_id ?? '')
+    setCustomerId(booking?.customer_id ?? '')
+    setSalesId(booking?.sales_person_id ?? '')
+    setTanggal(booking?.tanggal_booking ?? todayJakarta())
+    setHargaSepakat(booking?.harga_sepakat ?? 0)
+    setDpAmount(booking?.dp_amount ?? 0)
+    setMetode(booking?.metode_bayar ?? 'TRANSFER')
+    setCatatan(booking?.catatan ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, booking?.id])
 
   const unit = units.find((u) => u.id === carId)
 
@@ -262,39 +281,64 @@ function BookingFormDialog({
         open={open}
         onOpenChange={onOpenChange}
         size="lg"
-        title="Booking Baru"
-        description="Untuk customer yang baru bayar DP dan belum lunas. Unit akan ditahan (Terbooking) sampai Anda proses Lunasi atau Batalkan."
-        submitLabel="Simpan Booking"
-        successMessage="Booking tersimpan, unit sekarang berstatus Terbooking."
+        title={booking ? `Edit Booking ${booking.no_booking}` : 'Booking Baru'}
+        description={
+          booking
+            ? 'Ubah harga sepakat, DP, atau data lain. Unit tidak bisa diganti dari sini — batalkan booking ini lalu buat booking baru kalau unitnya salah.'
+            : 'Untuk customer yang baru bayar DP dan belum lunas. Unit akan ditahan (Terbooking) sampai Anda proses Lunasi atau Batalkan.'
+        }
+        submitLabel={booking ? 'Simpan Perubahan' : 'Simpan Booking'}
+        successMessage={
+          booking ? 'Perubahan booking tersimpan' : 'Booking tersimpan, unit sekarang berstatus Terbooking.'
+        }
         disabled={!carId || hargaSepakat <= 0 || dpAmount <= 0 || dpAmount > hargaSepakat}
         onSubmit={() =>
-          buatBooking({
-            car_id: carId,
-            customer_id: customerId || null,
-            sales_person_id: salesId || null,
-            tanggal_booking: tanggal,
-            harga_sepakat: hargaSepakat,
-            dp_amount: dpAmount,
-            metode_bayar: metode,
-            catatan,
-          })
+          booking
+            ? perbaruiBooking({
+                id: booking.id,
+                customer_id: customerId || null,
+                sales_person_id: salesId || null,
+                tanggal_booking: tanggal,
+                harga_sepakat: hargaSepakat,
+                dp_amount: dpAmount,
+                metode_bayar: metode,
+                catatan,
+              })
+            : buatBooking({
+                car_id: carId,
+                customer_id: customerId || null,
+                sales_person_id: salesId || null,
+                tanggal_booking: tanggal,
+                harga_sepakat: hargaSepakat,
+                dp_amount: dpAmount,
+                metode_bayar: metode,
+                catatan,
+              })
         }
       >
         <div className="space-y-5 pb-2">
-          <Field label="Unit Mobil" required htmlFor="booking-unit">
-            <SearchableSelect
-              id="booking-unit"
-              options={units.map((u) => ({
-                value: u.id,
-                label: u.label,
-                keterangan: `${u.no_polisi ?? 'Tanpa no. polisi'} · HPP ${formatRupiah(u.hpp)}`,
-              }))}
-              value={carId}
-              onChange={setCarId}
-              placeholder="Pilih unit ready stock"
-              emptyText="Belum ada unit berstatus Ready Stock"
-            />
-          </Field>
+          {booking ? (
+            <Field label="Unit Mobil">
+              <div className="flex h-10 items-center rounded-[10px] border border-line bg-surface-alt px-3 text-body text-ink-muted">
+                {booking.unit} {booking.no_polisi ? `· ${booking.no_polisi}` : ''}
+              </div>
+            </Field>
+          ) : (
+            <Field label="Unit Mobil" required htmlFor="booking-unit">
+              <SearchableSelect
+                id="booking-unit"
+                options={units.map((u) => ({
+                  value: u.id,
+                  label: u.label,
+                  keterangan: `${u.no_polisi ?? 'Tanpa no. polisi'} · HPP ${formatRupiah(u.hpp)}`,
+                }))}
+                value={carId}
+                onChange={setCarId}
+                placeholder="Pilih unit ready stock"
+                emptyText="Belum ada unit berstatus Ready Stock"
+              />
+            </Field>
+          )}
 
           <FormGrid>
             <Field label="Customer" htmlFor="booking-customer">
@@ -375,7 +419,7 @@ function BookingFormDialog({
             </Field>
           </FormGrid>
 
-          {unit ? (
+          {unit || booking ? (
             <div className="flex items-center justify-between rounded-lg bg-surface-alt px-4 py-3">
               <span className="text-label text-ink-muted">Sisa pelunasan</span>
               <Money

@@ -215,6 +215,23 @@ export const bookingSchema = z.object({
   catatan: opsional,
 })
 
+/** Edit booking yang sudah dibuat — unit (car_id) sengaja tidak bisa diubah di sini. */
+export const perbaruiBookingSchema = z
+  .object({
+    id: z.string().uuid(),
+    customer_id: z.string().uuid().optional().nullable(),
+    sales_person_id: z.string().uuid().optional().nullable(),
+    tanggal_booking: tanggal,
+    harga_sepakat: uang.refine((v) => v > 0, 'Harga sepakat wajib diisi'),
+    dp_amount: uang,
+    metode_bayar: z.enum(PAYMENT_METHOD).default('TRANSFER'),
+    catatan: opsional,
+  })
+  .refine((v) => v.dp_amount <= v.harga_sepakat, {
+    message: 'DP tidak boleh lebih besar dari harga sepakat',
+    path: ['dp_amount'],
+  })
+
 export const lunasiBookingSchema = z.object({
   booking_id: z.string().uuid(),
   tanggal_jual: tanggal,

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { jalankan, cek } from './_helper'
-import { bookingSchema, lunasiBookingSchema } from '@/lib/validations'
+import { bookingSchema, perbaruiBookingSchema, lunasiBookingSchema } from '@/lib/validations'
 import { hitungPenjualan, totalRincian } from '@/lib/calc'
 
 const PATHS = [
@@ -59,6 +59,47 @@ export async function buatBooking(input: unknown) {
     cek(await db.from('cars').update({ status: 'TERBOOKING' }).eq('id', v.car_id).select('id'))
 
     return row
+  })
+
+  if (res.ok) PATHS.forEach((p) => revalidatePath(p))
+  return res
+}
+
+/**
+ * Edit booking yang sudah dibuat — misalnya customer nambah DP, harga
+ * sepakat berubah, atau ganti customer/sales/tanggal/catatan. Unit (car_id)
+ * sengaja tidak bisa diubah lewat sini: kalau salah unit, batalkan booking
+ * ini lalu buat booking baru untuk unit yang benar.
+ */
+export async function perbaruiBooking(input: unknown) {
+  const parsed = perbaruiBookingSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? 'Data tidak valid' }
+  }
+  const { id, ...v } = parsed.data
+
+  const res = await jalankan(async (db) => {
+    const booking = cek(await db.from('bookings').select('status').eq('id', id).single()) as any
+    if (booking.status !== 'AKTIF') {
+      throw new Error('Booking ini sudah tidak aktif, tidak bisa diedit lagi.')
+    }
+
+    cek(
+      await db
+        .from('bookings')
+        .update({
+          customer_id: v.customer_id || null,
+          sales_person_id: v.sales_person_id || null,
+          tanggal_booking: v.tanggal_booking,
+          harga_sepakat: v.harga_sepakat,
+          dp_amount: v.dp_amount,
+          metode_bayar: v.metode_bayar,
+          catatan: v.catatan,
+        })
+        .eq('id', id)
+        .select('id'),
+    )
+    return undefined
   })
 
   if (res.ok) PATHS.forEach((p) => revalidatePath(p))
