@@ -173,6 +173,11 @@ export const pembelianSchema = z.object({
     .min(1, 'Alokasi modal investor belum terisi'),
 })
 
+/** Edit pembelian yang sudah dibuat — unit (car_id) sengaja tidak bisa diubah di sini. */
+export const perbaruiPembelianSchema = pembelianSchema.omit({ car_id: true }).extend({
+  id: z.string().uuid(),
+})
+
 /* ------------------------------ Perbaikan ---------------------------- */
 
 export const perbaikanSchema = z.object({
