@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { AktifBadge, RoleBadge } from '@/components/shared/status-badge'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
@@ -73,6 +73,47 @@ export function PenggunaClient({
     })
   }
 
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (row: BarisPengguna): AksiBaris[] => [
+      {
+        label: 'Edit',
+        icon: Pencil,
+        onSelect: () => {
+          setEditing(row)
+          setOpen(true)
+        },
+      },
+      {
+        label: 'Reset Password',
+        icon: KeyRound,
+        onSelect: () => resetPassword(row),
+      },
+      {
+        label: row.is_active ? 'Nonaktifkan' : 'Aktifkan kembali',
+        icon: UserMinus,
+        tone: row.is_active ? ('danger' as const) : undefined,
+        onSelect: () =>
+          confirm({
+            title: row.is_active ? 'Nonaktifkan akun ini?' : 'Aktifkan akun ini?',
+            description: row.is_active
+              ? `${row.nama} tidak akan bisa login, tapi datanya tetap tersimpan.`
+              : `${row.nama} bisa login kembali.`,
+            confirmLabel: 'Ya, lanjutkan',
+            variant: row.is_active ? 'destructive' : 'primary',
+            successMessage: 'Status akun diperbarui',
+            onConfirm: async () => {
+              const ok = await jalankan(() => ubahStatusPengguna(row.id, !row.is_active))
+              if (!ok) throw new Error('')
+            },
+          }),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
   const columns = React.useMemo<ColumnDef<BarisPengguna, any>[]>(
     () => [
       { accessorKey: 'nama', header: 'Nama' },
@@ -116,46 +157,7 @@ export function PenggunaClient({
         header: '',
         enableSorting: false,
         meta: { align: 'right' as const },
-        cell: ({ row }) => (
-          <RowActions
-            actions={[
-              {
-                label: 'Edit',
-                icon: Pencil,
-                onSelect: () => {
-                  setEditing(row.original)
-                  setOpen(true)
-                },
-              },
-              {
-                label: 'Reset Password',
-                icon: KeyRound,
-                onSelect: () => resetPassword(row.original),
-              },
-              {
-                label: row.original.is_active ? 'Nonaktifkan' : 'Aktifkan kembali',
-                icon: UserMinus,
-                tone: row.original.is_active ? ('danger' as const) : undefined,
-                onSelect: () =>
-                  confirm({
-                    title: row.original.is_active ? 'Nonaktifkan akun ini?' : 'Aktifkan akun ini?',
-                    description: row.original.is_active
-                      ? `${row.original.nama} tidak akan bisa login, tapi datanya tetap tersimpan.`
-                      : `${row.original.nama} bisa login kembali.`,
-                    confirmLabel: 'Ya, lanjutkan',
-                    variant: row.original.is_active ? 'destructive' : 'primary',
-                    successMessage: 'Status akun diperbarui',
-                    onConfirm: async () => {
-                      const ok = await jalankan(() =>
-                        ubahStatusPengguna(row.original.id, !row.original.is_active),
-                      )
-                      if (!ok) throw new Error('')
-                    },
-                  }),
-              },
-            ]}
-          />
-        ),
+        cell: ({ row }) => <RowActions actions={aksiUntuk(row.original)} />,
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,7 +222,10 @@ export function PenggunaClient({
                 <p className="truncate font-medium text-ink">{row.nama}</p>
                 <p className="truncate text-label text-ink-muted">{row.email}</p>
               </div>
-              <RoleBadge role={row.role} />
+              <div className="flex shrink-0 items-center gap-1">
+                <RoleBadge role={row.role} />
+                <RowActions actions={aksiUntuk(row)} />
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-label text-ink-muted">{row.investor_nama ?? '-'}</span>

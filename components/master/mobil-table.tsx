@@ -8,7 +8,7 @@ import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
@@ -56,6 +56,46 @@ export function MobilTable({
           (fTahun === 'semua' || String(r.tahun) === fTahun),
       ),
     [rows, fStatus, fMerek, fTahun],
+  )
+
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (row: CarOverview): AksiBaris[] => [
+      { label: 'Lihat Detail', icon: Eye, href: `/master/mobil/${row.id}` },
+      ...(canWrite
+        ? [
+            {
+              label: 'Edit',
+              icon: Pencil,
+              onSelect: () => {
+                setEditing(row)
+                setOpen(true)
+              },
+            },
+            {
+              label: 'Hapus',
+              icon: Trash2,
+              tone: 'danger' as const,
+              disabled: Boolean(row.purchase_id),
+              alasan: 'Unit ini sudah punya transaksi pembelian',
+              onSelect: () =>
+                confirm({
+                  title: 'Hapus unit ini?',
+                  description: `${row.merek} ${row.tipe} ${row.tahun} akan dihapus permanen.`,
+                  confirmLabel: 'Ya, hapus',
+                  successMessage: 'Unit berhasil dihapus',
+                  onConfirm: async () => {
+                    const ok = await jalankan(() => hapusMobil(row.id))
+                    if (!ok) throw new Error('')
+                  },
+                }),
+            },
+          ]
+        : []),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canWrite],
   )
 
   const columns = React.useMemo<ColumnDef<CarOverview, any>[]>(
@@ -108,43 +148,7 @@ export function MobilTable({
         header: '',
         enableSorting: false,
         meta: { align: 'right' as const },
-        cell: ({ row }) => (
-          <RowActions
-            actions={[
-              { label: 'Lihat Detail', icon: Eye, href: `/master/mobil/${row.original.id}` },
-              ...(canWrite
-                ? [
-                    {
-                      label: 'Edit',
-                      icon: Pencil,
-                      onSelect: () => {
-                        setEditing(row.original)
-                        setOpen(true)
-                      },
-                    },
-                    {
-                      label: 'Hapus',
-                      icon: Trash2,
-                      tone: 'danger' as const,
-                      disabled: Boolean(row.original.purchase_id),
-                      alasan: 'Unit ini sudah punya transaksi pembelian',
-                      onSelect: () =>
-                        confirm({
-                          title: 'Hapus unit ini?',
-                          description: `${row.original.merek} ${row.original.tipe} ${row.original.tahun} akan dihapus permanen.`,
-                          confirmLabel: 'Ya, hapus',
-                          successMessage: 'Unit berhasil dihapus',
-                          onConfirm: async () => {
-                            const ok = await jalankan(() => hapusMobil(row.original.id))
-                            if (!ok) throw new Error('')
-                          },
-                        }),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        ),
+        cell: ({ row }) => <RowActions actions={aksiUntuk(row.original)} />,
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -215,8 +219,8 @@ export function MobilTable({
           />
         }
         mobileCard={(row) => (
-          <Link href={`/master/mobil/${row.id}`} className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
+          <div className="flex items-start justify-between gap-3">
+            <Link href={`/master/mobil/${row.id}`} className="min-w-0 space-y-1 hover:text-accent">
               <p className="truncate font-medium text-ink">
                 {row.merek} {row.tipe} {row.tahun}
               </p>
@@ -226,9 +230,12 @@ export function MobilTable({
               <p className="text-label text-ink-muted">
                 HPP <Money value={row.hpp} className="font-medium text-ink" />
               </p>
+            </Link>
+            <div className="flex shrink-0 items-center gap-1">
+              <StatusBadge status={row.status} />
+              <RowActions actions={aksiUntuk(row)} />
             </div>
-            <StatusBadge status={row.status} />
-          </Link>
+          </div>
         )}
       />
 

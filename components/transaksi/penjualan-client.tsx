@@ -8,7 +8,7 @@ import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
 import { BagiHasilBadge } from '@/components/shared/status-badge'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { RincianBiayaRows } from '@/components/forms/rincian-biaya'
@@ -119,6 +119,31 @@ export function PenjualanClient({
   const { confirm, dialog } = useConfirm()
   const { jalankan } = useAksi()
 
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (row: Penjualan): AksiBaris[] => [
+      {
+        label: 'Batalkan Penjualan',
+        icon: Ban,
+        tone: 'danger',
+        onSelect: () =>
+          confirm({
+            title: 'Batalkan penjualan ini?',
+            description: `Transaksi ${row.no_transaksi} akan dihapus, bagi hasil yang sudah diproses ikut dibalikkan, dan unit ${row.unit} kembali ke Ready Stock. Kalau ada dana yang sudah dicairkan ke investor, pembatalan akan ditolak — perlu rekonsiliasi manual.`,
+            confirmLabel: 'Ya, batalkan',
+            successMessage: 'Penjualan dibatalkan',
+            onConfirm: async () => {
+              const ok = await jalankan(() => batalkanPenjualan(row.id))
+              if (!ok) throw new Error('')
+            },
+          }),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
   const columns = React.useMemo<ColumnDef<Penjualan, any>[]>(
     () => [
       { accessorKey: 'no_transaksi', header: 'No. Transaksi' },
@@ -174,29 +199,7 @@ export function PenjualanClient({
         header: '',
         enableSorting: false,
         meta: { align: 'right' as const },
-        cell: ({ row }) =>
-          canWrite ? (
-            <RowActions
-              actions={[
-                {
-                  label: 'Batalkan Penjualan',
-                  icon: Ban,
-                  tone: 'danger',
-                  onSelect: () =>
-                    confirm({
-                      title: 'Batalkan penjualan ini?',
-                      description: `Transaksi ${row.original.no_transaksi} akan dihapus, bagi hasil yang sudah diproses ikut dibalikkan, dan unit ${row.original.unit} kembali ke Ready Stock. Kalau ada dana yang sudah dicairkan ke investor, pembatalan akan ditolak — perlu rekonsiliasi manual.`,
-                      confirmLabel: 'Ya, batalkan',
-                      successMessage: 'Penjualan dibatalkan',
-                      onConfirm: async () => {
-                        const ok = await jalankan(() => batalkanPenjualan(row.original.id))
-                        if (!ok) throw new Error('')
-                      },
-                    }),
-                },
-              ]}
-            />
-          ) : null,
+        cell: ({ row }) => (canWrite ? <RowActions actions={aksiUntuk(row.original)} /> : null),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,21 +240,24 @@ export function PenjualanClient({
           />
         }
         mobileCard={(row) => (
-          <Link href={`/master/mobil/${row.car_id}`} className="block space-y-2">
+          <div className="space-y-2">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <Link href={`/master/mobil/${row.car_id}`} className="min-w-0 hover:text-accent">
                 <p className="truncate font-medium text-ink">{row.unit}</p>
                 <p className="text-label text-ink-muted">
                   {row.no_transaksi} · {row.customer_nama}
                 </p>
+              </Link>
+              <div className="flex shrink-0 items-center gap-1">
+                <BagiHasilBadge sudah={row.is_profit_shared} />
+                {canWrite ? <RowActions actions={aksiUntuk(row)} /> : null}
               </div>
-              <BagiHasilBadge sudah={row.is_profit_shared} />
             </div>
             <div className="flex items-center justify-between">
               <span className="text-label text-ink-muted">{formatTanggal(row.tanggal_jual)}</span>
               <Money value={row.laba_bersih} colored className="font-medium" />
             </div>
-          </Link>
+          </div>
         )}
       />
 

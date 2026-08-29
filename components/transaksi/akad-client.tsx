@@ -7,7 +7,7 @@ import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
@@ -55,6 +55,31 @@ export function AkadClient({
   const data = React.useMemo(
     () => (fStatus === 'semua' ? rows : rows.filter((r) => r.status === fStatus)),
     [rows, fStatus],
+  )
+
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (row: Akad): AksiBaris[] => [
+      {
+        label: 'Batalkan Akad',
+        icon: Ban,
+        tone: 'danger',
+        onSelect: () =>
+          confirm({
+            title: 'Batalkan akad ini?',
+            description: `Akad ${row.no_akad} atas nama ${row.investor_nama} akan ditandai Batal. Saldo tidak terpengaruh karena dana belum dikonfirmasi.`,
+            confirmLabel: 'Ya, batalkan',
+            successMessage: 'Akad dibatalkan',
+            onConfirm: async () => {
+              const ok = await jalankan(() => batalkanAkad(row.id))
+              if (!ok) throw new Error('')
+            },
+          }),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   )
 
   const columns = React.useMemo<ColumnDef<Akad, any>[]>(
@@ -110,26 +135,7 @@ export function AkadClient({
                   <BadgeCheck />
                   <span className="hidden lg:inline">Konfirmasi Dana</span>
                 </Button>
-                <RowActions
-                  actions={[
-                    {
-                      label: 'Batalkan Akad',
-                      icon: Ban,
-                      tone: 'danger',
-                      onSelect: () =>
-                        confirm({
-                          title: 'Batalkan akad ini?',
-                          description: `Akad ${a.no_akad} atas nama ${a.investor_nama} akan ditandai Batal. Saldo tidak terpengaruh karena dana belum dikonfirmasi.`,
-                          confirmLabel: 'Ya, batalkan',
-                          successMessage: 'Akad dibatalkan',
-                          onConfirm: async () => {
-                            const ok = await jalankan(() => batalkanAkad(a.id))
-                            if (!ok) throw new Error('')
-                          },
-                        }),
-                    },
-                  ]}
-                />
+                <RowActions actions={aksiUntuk(a)} />
               </div>
             )
           }
@@ -214,10 +220,13 @@ export function AkadClient({
               )}
             </div>
             {canWrite && row.status === 'MENUNGGU_DANA' ? (
-              <Button size="sm" variant="accent" className="w-full" onClick={() => setKonfirmasi(row)}>
-                <BadgeCheck />
-                Konfirmasi Dana Diterima
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="accent" className="flex-1" onClick={() => setKonfirmasi(row)}>
+                  <BadgeCheck />
+                  Konfirmasi Dana Diterima
+                </Button>
+                <RowActions actions={aksiUntuk(row)} />
+              </div>
             ) : null}
           </div>
         )}

@@ -8,7 +8,7 @@ import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
@@ -66,6 +66,53 @@ export function PerbaikanClient({
     [rows, fStatus],
   )
 
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (row: Perbaikan): AksiBaris[] => [
+      ...(row.status === 'PROSES'
+        ? [
+            {
+              label: 'Tandai Selesai',
+              icon: CheckCircle2,
+              onSelect: () =>
+                jalankan(() => selesaikanPerbaikan(row.id, todayJakarta()), {
+                  sukses: 'Perbaikan ditandai selesai',
+                }),
+            },
+          ]
+        : []),
+      {
+        label: 'Edit',
+        icon: Pencil,
+        onSelect: () => {
+          setEditing(row)
+          setOpen(true)
+        },
+      },
+      {
+        label: 'Hapus',
+        icon: Trash2,
+        tone: 'danger' as const,
+        disabled: row.ambil_dari_modal,
+        alasan: 'Perbaikan ini sudah memotong saldo investor',
+        onSelect: () =>
+          confirm({
+            title: 'Hapus data perbaikan?',
+            description: `Perbaikan ${row.jenis_perbaikan} pada ${row.unit} akan dihapus dan HPP unit ikut berkurang.`,
+            confirmLabel: 'Ya, hapus',
+            successMessage: 'Data perbaikan dihapus',
+            onConfirm: async () => {
+              const ok = await jalankan(() => hapusPerbaikan(row.id))
+              if (!ok) throw new Error('')
+            },
+          }),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
   const columns = React.useMemo<ColumnDef<Perbaikan, any>[]>(
     () => [
       {
@@ -106,51 +153,7 @@ export function PerbaikanClient({
         header: '',
         enableSorting: false,
         meta: { align: 'right' as const },
-        cell: ({ row }) =>
-          canWrite ? (
-            <RowActions
-              actions={[
-                ...(row.original.status === 'PROSES'
-                  ? [
-                      {
-                        label: 'Tandai Selesai',
-                        icon: CheckCircle2,
-                        onSelect: () =>
-                          jalankan(() => selesaikanPerbaikan(row.original.id, todayJakarta()), {
-                            sukses: 'Perbaikan ditandai selesai',
-                          }),
-                      },
-                    ]
-                  : []),
-                {
-                  label: 'Edit',
-                  icon: Pencil,
-                  onSelect: () => {
-                    setEditing(row.original)
-                    setOpen(true)
-                  },
-                },
-                {
-                  label: 'Hapus',
-                  icon: Trash2,
-                  tone: 'danger' as const,
-                  disabled: row.original.ambil_dari_modal,
-                  alasan: 'Perbaikan ini sudah memotong saldo investor',
-                  onSelect: () =>
-                    confirm({
-                      title: 'Hapus data perbaikan?',
-                      description: `Perbaikan ${row.original.jenis_perbaikan} pada ${row.original.unit} akan dihapus dan HPP unit ikut berkurang.`,
-                      confirmLabel: 'Ya, hapus',
-                      successMessage: 'Data perbaikan dihapus',
-                      onConfirm: async () => {
-                        const ok = await jalankan(() => hapusPerbaikan(row.original.id))
-                        if (!ok) throw new Error('')
-                      },
-                    }),
-                },
-              ]}
-            />
-          ) : null,
+        cell: ({ row }) => (canWrite ? <RowActions actions={aksiUntuk(row.original)} /> : null),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,7 +225,10 @@ export function PerbaikanClient({
                   {row.jenis_perbaikan} · {row.vendor_nama}
                 </p>
               </div>
-              <StatusBadge status={row.status} />
+              <div className="flex shrink-0 items-center gap-1">
+                <StatusBadge status={row.status} />
+                {canWrite ? <RowActions actions={aksiUntuk(row)} /> : null}
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-label text-ink-muted">{formatTanggal(row.tanggal_masuk)}</span>

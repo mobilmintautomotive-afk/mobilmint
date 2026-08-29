@@ -6,7 +6,7 @@ import { Boxes, Pencil, Plus, Trash2 } from 'lucide-react'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,39 @@ export function AsetTable({
     setEditing(null)
     setOpen(true)
   }
+
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (row: Aset): AksiBaris[] => [
+      {
+        label: 'Edit',
+        icon: Pencil,
+        onSelect: () => {
+          setEditing(row)
+          setOpen(true)
+        },
+      },
+      {
+        label: 'Hapus',
+        icon: Trash2,
+        tone: 'danger',
+        onSelect: () =>
+          confirm({
+            title: 'Hapus aset ini?',
+            description: `${row.nama} akan dihapus permanen dari daftar aset.`,
+            confirmLabel: 'Ya, hapus',
+            successMessage: 'Aset dihapus',
+            onConfirm: async () => {
+              const ok = await jalankan(() => hapusAset(row.id))
+              if (!ok) throw new Error('')
+            },
+          }),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
   const columns = React.useMemo<ColumnDef<Aset, any>[]>(
     () => [
@@ -82,37 +115,7 @@ export function AsetTable({
         header: '',
         enableSorting: false,
         meta: { align: 'right' as const },
-        cell: ({ row }) =>
-          canWrite ? (
-            <RowActions
-              actions={[
-                {
-                  label: 'Edit',
-                  icon: Pencil,
-                  onSelect: () => {
-                    setEditing(row.original)
-                    setOpen(true)
-                  },
-                },
-                {
-                  label: 'Hapus',
-                  icon: Trash2,
-                  tone: 'danger',
-                  onSelect: () =>
-                    confirm({
-                      title: 'Hapus aset ini?',
-                      description: `${row.original.nama} akan dihapus permanen dari daftar aset.`,
-                      confirmLabel: 'Ya, hapus',
-                      successMessage: 'Aset dihapus',
-                      onConfirm: async () => {
-                        const ok = await jalankan(() => hapusAset(row.original.id))
-                        if (!ok) throw new Error('')
-                      },
-                    }),
-                },
-              ]}
-            />
-          ) : null,
+        cell: ({ row }) => (canWrite ? <RowActions actions={aksiUntuk(row.original)} /> : null),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,7 +163,10 @@ export function AsetTable({
                 {row.kategori} · {formatTanggal(row.tanggal_beli)}
               </p>
             </div>
-            <Money value={row.nilai_buku} className="shrink-0 font-medium" />
+            <div className="flex shrink-0 items-center gap-2">
+              <Money value={row.nilai_buku} className="font-medium" />
+              {canWrite ? <RowActions actions={aksiUntuk(row)} /> : null}
+            </div>
           </div>
         )}
       />

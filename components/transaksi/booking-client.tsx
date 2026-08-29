@@ -7,7 +7,7 @@ import { Ban, BookmarkCheck, CheckCircle2, Pencil, Plus, UserPlus } from 'lucide
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
@@ -76,6 +76,41 @@ export function BookingClient({
   const { confirm, dialog } = useConfirm()
   const { jalankan } = useAksi()
 
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (row: Booking): AksiBaris[] => [
+      {
+        label: 'Edit Booking',
+        icon: Pencil,
+        onSelect: () => setEditing(row),
+      },
+      {
+        label: 'Lunasi',
+        icon: CheckCircle2,
+        href: `/transaksi/penjualan?booking=${row.id}`,
+      },
+      {
+        label: 'Batalkan Booking',
+        icon: Ban,
+        tone: 'danger',
+        onSelect: () =>
+          confirm({
+            title: 'Batalkan booking ini?',
+            description: `Booking ${row.no_booking} akan dibatalkan dan unit ${row.unit} kembali ke Ready Stock. DP yang sudah diterima perlu direkonsiliasi manual sesuai kesepakatan dengan customer.`,
+            confirmLabel: 'Ya, batalkan',
+            successMessage: 'Booking dibatalkan',
+            onConfirm: async () => {
+              const ok = await jalankan(() => batalkanBooking(row.id))
+              if (!ok) throw new Error('')
+            },
+          }),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
   const columns = React.useMemo<ColumnDef<Booking, any>[]>(
     () => [
       { accessorKey: 'no_booking', header: 'No. Booking' },
@@ -119,39 +154,7 @@ export function BookingClient({
         header: '',
         enableSorting: false,
         meta: { align: 'right' as const },
-        cell: ({ row }) =>
-          canWrite ? (
-            <RowActions
-              actions={[
-                {
-                  label: 'Edit Booking',
-                  icon: Pencil,
-                  onSelect: () => setEditing(row.original),
-                },
-                {
-                  label: 'Lunasi',
-                  icon: CheckCircle2,
-                  href: `/transaksi/penjualan?booking=${row.original.id}`,
-                },
-                {
-                  label: 'Batalkan Booking',
-                  icon: Ban,
-                  tone: 'danger',
-                  onSelect: () =>
-                    confirm({
-                      title: 'Batalkan booking ini?',
-                      description: `Booking ${row.original.no_booking} akan dibatalkan dan unit ${row.original.unit} kembali ke Ready Stock. DP yang sudah diterima perlu direkonsiliasi manual sesuai kesepakatan dengan customer.`,
-                      confirmLabel: 'Ya, batalkan',
-                      successMessage: 'Booking dibatalkan',
-                      onConfirm: async () => {
-                        const ok = await jalankan(() => batalkanBooking(row.original.id))
-                        if (!ok) throw new Error('')
-                      },
-                    }),
-                },
-              ]}
-            />
-          ) : null,
+        cell: ({ row }) => (canWrite ? <RowActions actions={aksiUntuk(row.original)} /> : null),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,20 +197,21 @@ export function BookingClient({
           />
         }
         mobileCard={(row) => (
-          <Link href={`/master/mobil/${row.car_id}`} className="block space-y-2">
+          <div className="space-y-2">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <Link href={`/master/mobil/${row.car_id}`} className="min-w-0 hover:text-accent">
                 <p className="truncate font-medium text-ink">{row.unit}</p>
                 <p className="text-label text-ink-muted">
                   {row.no_booking} · {row.customer_nama}
                 </p>
-              </div>
+              </Link>
+              {canWrite ? <RowActions actions={aksiUntuk(row)} /> : null}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-label text-ink-muted">DP {formatRupiah(row.dp_amount)}</span>
               <Money value={row.sisa_pelunasan} className="font-medium" />
             </div>
-          </Link>
+          </div>
         )}
       />
 

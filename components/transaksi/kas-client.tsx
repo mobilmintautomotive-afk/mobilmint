@@ -178,7 +178,10 @@ export function KasClient({
                 <p className="truncate font-medium text-ink">{CASH_TYPE_LABEL[row.tipe]}</p>
                 <p className="text-label text-ink-muted">{row.keterangan}</p>
               </div>
-              <Money value={row.amount} colored className="shrink-0 font-medium" />
+              <div className="flex shrink-0 items-center gap-1">
+                <Money value={row.amount} colored className="font-medium" />
+                {canWrite && !row.is_auto ? <TombolHapusMutasi id={row.id} /> : null}
+              </div>
             </div>
             <p className="text-label text-ink-muted">
               {formatTanggal(row.tanggal)} · {row.bank_nama}

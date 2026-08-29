@@ -6,7 +6,7 @@ import { Landmark, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
@@ -34,6 +34,39 @@ export function BankTable({
     setEditing(null)
     setOpen(true)
   }
+
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (row: AkunBank): AksiBaris[] => [
+      {
+        label: 'Edit',
+        icon: Pencil,
+        onSelect: () => {
+          setEditing(row)
+          setOpen(true)
+        },
+      },
+      {
+        label: 'Hapus',
+        icon: Trash2,
+        tone: 'danger',
+        onSelect: () =>
+          confirm({
+            title: 'Hapus rekening ini?',
+            description: `${row.nama} akan dihapus. Kalau sudah pernah ada mutasi kas, penghapusan akan ditolak — nonaktifkan saja lewat Edit.`,
+            confirmLabel: 'Ya, hapus',
+            successMessage: 'Rekening dihapus',
+            onConfirm: async () => {
+              const ok = await jalankan(() => hapusAkunBank(row.id))
+              if (!ok) throw new Error('')
+            },
+          }),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
   const columns = React.useMemo<ColumnDef<AkunBank, any>[]>(
     () => [
@@ -92,37 +125,7 @@ export function BankTable({
         header: '',
         enableSorting: false,
         meta: { align: 'right' as const },
-        cell: ({ row }) =>
-          canWrite ? (
-            <RowActions
-              actions={[
-                {
-                  label: 'Edit',
-                  icon: Pencil,
-                  onSelect: () => {
-                    setEditing(row.original)
-                    setOpen(true)
-                  },
-                },
-                {
-                  label: 'Hapus',
-                  icon: Trash2,
-                  tone: 'danger',
-                  onSelect: () =>
-                    confirm({
-                      title: 'Hapus rekening ini?',
-                      description: `${row.original.nama} akan dihapus. Kalau sudah pernah ada mutasi kas, penghapusan akan ditolak — nonaktifkan saja lewat Edit.`,
-                      confirmLabel: 'Ya, hapus',
-                      successMessage: 'Rekening dihapus',
-                      onConfirm: async () => {
-                        const ok = await jalankan(() => hapusAkunBank(row.original.id))
-                        if (!ok) throw new Error('')
-                      },
-                    }),
-                },
-              ]}
-            />
-          ) : null,
+        cell: ({ row }) => (canWrite ? <RowActions actions={aksiUntuk(row.original)} /> : null),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,7 +173,10 @@ export function BankTable({
                 {row.nama_bank} · {row.no_rekening}
               </p>
             </div>
-            <Money value={row.saldo} colored className="shrink-0 font-medium" />
+            <div className="flex shrink-0 items-center gap-2">
+              <Money value={row.saldo} colored className="font-medium" />
+              {canWrite ? <RowActions actions={aksiUntuk(row)} /> : null}
+            </div>
           </div>
         )}
       />

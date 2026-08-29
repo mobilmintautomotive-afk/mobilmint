@@ -7,7 +7,7 @@ import { DataTable } from '@/components/shared/data-table'
 import { EmptyState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { RowActions } from '@/components/shared/row-actions'
+import { RowActions, type AksiBaris } from '@/components/shared/row-actions'
 import { useConfirm } from '@/components/shared/confirm-dialog'
 import { FormDialog, FormGrid, useAksi } from '@/components/forms/form-dialog'
 import { Button } from '@/components/ui/button'
@@ -82,6 +82,42 @@ export function TitipJualClient({
   const [tarik, setTarik] = React.useState<TitipJual | null>(null)
   const { confirm, dialog } = useConfirm()
   const { jalankan } = useAksi()
+
+  // Dipakai bareng di kolom aksi (desktop) & mobileCard supaya keduanya
+  // selalu sinkron -- kartu mobile sempat lupa dikasih aksi sama sekali.
+  const aksiUntuk = React.useCallback(
+    (r: TitipJual): AksiBaris[] => {
+      if (r.status !== 'PROSES') return []
+      const actions: AksiBaris[] =
+        r.skema === 'JASA_KONTEN'
+          ? [{ label: 'Tandai Selesai', icon: CheckCircle2, onSelect: () => setSelesaikan(r) }]
+          : [
+              { label: 'Tandai Terjual', icon: CheckCircle2, onSelect: () => setJual(r) },
+              { label: 'Tarik Unit', icon: PackageX, onSelect: () => setTarik(r) },
+            ]
+      return [
+        ...actions,
+        {
+          label: 'Hapus',
+          icon: Trash2,
+          tone: 'danger' as const,
+          onSelect: () =>
+            confirm({
+              title: 'Hapus pendaftaran ini?',
+              description: `Titip jual ${r.no_titip} (${r.merek} ${r.tipe} ${r.tahun}) akan dihapus.`,
+              confirmLabel: 'Ya, hapus',
+              successMessage: 'Pendaftaran dihapus',
+              onConfirm: async () => {
+                const ok = await jalankan(() => hapusTitipJual(r.id))
+                if (!ok) throw new Error('')
+              },
+            }),
+        },
+      ]
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
   const columns = React.useMemo<ColumnDef<TitipJual, any>[]>(
     () => [
@@ -161,40 +197,10 @@ export function TitipJualClient({
         header: '',
         enableSorting: false,
         meta: { align: 'right' as const },
-        cell: ({ row }) => {
-          if (!canWrite || row.original.status !== 'PROSES') return null
-          const r = row.original
-          const actions =
-            r.skema === 'JASA_KONTEN'
-              ? [{ label: 'Tandai Selesai', icon: CheckCircle2, onSelect: () => setSelesaikan(r) }]
-              : [
-                  { label: 'Tandai Terjual', icon: CheckCircle2, onSelect: () => setJual(r) },
-                  { label: 'Tarik Unit', icon: PackageX, onSelect: () => setTarik(r) },
-                ]
-          return (
-            <RowActions
-              actions={[
-                ...actions,
-                {
-                  label: 'Hapus',
-                  icon: Trash2,
-                  tone: 'danger' as const,
-                  onSelect: () =>
-                    confirm({
-                      title: 'Hapus pendaftaran ini?',
-                      description: `Titip jual ${r.no_titip} (${r.merek} ${r.tipe} ${r.tahun}) akan dihapus.`,
-                      confirmLabel: 'Ya, hapus',
-                      successMessage: 'Pendaftaran dihapus',
-                      onConfirm: async () => {
-                        const ok = await jalankan(() => hapusTitipJual(r.id))
-                        if (!ok) throw new Error('')
-                      },
-                    }),
-                },
-              ]}
-            />
-          )
-        },
+        cell: ({ row }) =>
+          canWrite && row.original.status === 'PROSES' ? (
+            <RowActions actions={aksiUntuk(row.original)} />
+          ) : null,
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -245,7 +251,12 @@ export function TitipJualClient({
                   {row.no_titip} · {row.nama_pemilik}
                 </p>
               </div>
-              <StatusBadge status={row.status} />
+              <div className="flex shrink-0 items-center gap-1">
+                <StatusBadge status={row.status} />
+                {canWrite && row.status === 'PROSES' ? (
+                  <RowActions actions={aksiUntuk(row)} />
+                ) : null}
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <SkemaBadge skema={row.skema} />
