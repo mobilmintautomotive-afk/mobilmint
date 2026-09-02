@@ -28,6 +28,7 @@ export type MutasiKas = {
   keterangan: string
   is_auto: boolean
   ref_table: string | null
+  ref_id: string | null
 }
 
 /**
@@ -107,6 +108,7 @@ export async function getMutasiKas(bankAccountId?: string) {
       keterangan: r.keterangan as string,
       is_auto: Boolean(r.is_auto),
       ref_table: (r.ref_table as string | null) ?? null,
+      ref_id: (r.ref_id as string | null) ?? null,
     }))
   }, [])
 }

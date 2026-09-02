@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { jalankan, cek } from './_helper'
-import { bankSchema, mutasiKasSchema, priveSchema } from '@/lib/validations'
+import { bankSchema, mutasiKasSchema, transferRekeningSchema, priveSchema } from '@/lib/validations'
 
 const PATHS = ['/master/bank', '/transaksi/kas', '/laporan/neraca', '/dashboard']
 
@@ -91,14 +91,59 @@ export async function catatMutasiKas(input: unknown) {
 export async function hapusMutasiKas(id: string) {
   const res = await jalankan(async (db) => {
     const row = cek(
-      await db.from('cash_ledger').select('is_auto').eq('id', id).single(),
+      await db.from('cash_ledger').select('is_auto, ref_table').eq('id', id).single(),
     ) as any
     if (row.is_auto) {
       throw new Error(
         'Mutasi ini dibuat otomatis dari transaksinya. Untuk mengubahnya, edit atau batalkan transaksi aslinya.',
       )
     }
+    if (row.ref_table === 'transfer_manual') {
+      throw new Error(
+        'Ini salah satu sisi transfer antar rekening. Gunakan tombol "Batalkan Transfer" supaya kedua sisinya ikut terhapus.',
+      )
+    }
     cek(await db.from('cash_ledger').delete().eq('id', id).select('id'))
+    return undefined
+  })
+  if (res.ok) PATHS.forEach((p) => revalidatePath(p))
+  return res
+}
+
+/**
+ * Transfer antar rekening milik sendiri — dicatat sekali submit, langsung
+ * jadi dua baris cash_ledger (keluar di rekening asal, masuk di rekening
+ * tujuan) yang saling terhubung lewat satu ref_id (lihat migration
+ * catat_transfer_rekening). Tidak mungkin cuma sebelah yang tersimpan.
+ */
+export async function catatTransferRekening(input: unknown) {
+  const parsed = transferRekeningSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? 'Data tidak valid' }
+  }
+  const v = parsed.data
+
+  const res = await jalankan(async (db) => {
+    cek(
+      await db.rpc('catat_transfer_rekening', {
+        p_dari_bank_id: v.dari_bank_account_id,
+        p_ke_bank_id: v.ke_bank_account_id,
+        p_tanggal: v.tanggal,
+        p_amount: v.nominal,
+        p_keterangan: v.keterangan,
+      }),
+    )
+    return undefined
+  })
+
+  if (res.ok) PATHS.forEach((p) => revalidatePath(p))
+  return res
+}
+
+/** Batalkan transfer antar rekening — hapus kedua sisinya sekaligus lewat ref_id yang sama. */
+export async function batalkanTransferKas(refId: string) {
+  const res = await jalankan(async (db) => {
+    cek(await db.rpc('hapus_transfer_rekening', { p_ref_id: refId }))
     return undefined
   })
   if (res.ok) PATHS.forEach((p) => revalidatePath(p))

@@ -355,6 +355,19 @@ export const mutasiKasSchema = z.object({
   keterangan: wajib('Keterangan'),
 })
 
+export const transferRekeningSchema = z
+  .object({
+    dari_bank_account_id: z.string().uuid('Pilih rekening asal dulu'),
+    ke_bank_account_id: z.string().uuid('Pilih rekening tujuan dulu'),
+    tanggal: tanggal,
+    nominal: uang.refine((v) => v > 0, 'Nominal wajib diisi'),
+    keterangan: opsional,
+  })
+  .refine((v) => v.dari_bank_account_id !== v.ke_bank_account_id, {
+    message: 'Rekening asal dan tujuan tidak boleh sama',
+    path: ['ke_bank_account_id'],
+  })
+
 export const priveSchema = z.object({
   bank_account_id: z.string().uuid('Pilih rekening dulu'),
   tanggal: tanggal,

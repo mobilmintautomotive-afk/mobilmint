@@ -2,7 +2,16 @@
 
 import * as React from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowDownLeft, Banknote, HandCoins, Lock, Plus, Trash2, Wallet } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ArrowLeftRight,
+  Banknote,
+  HandCoins,
+  Lock,
+  Plus,
+  Trash2,
+  Wallet,
+} from 'lucide-react'
 import { DataTable } from '@/components/shared/data-table'
 import { EmptyState, ErrorState } from '@/components/shared/states'
 import { Money } from '@/components/shared/money'
@@ -14,7 +23,13 @@ import { Button } from '@/components/ui/button'
 import { Field, Input, MoneyInput, Textarea } from '@/components/ui/input'
 import { Card, CardTitle } from '@/components/ui/primitives'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { catatMutasiKas, cairkanHakPengelola, hapusMutasiKas } from '@/app/actions/bank'
+import {
+  catatMutasiKas,
+  catatTransferRekening,
+  cairkanHakPengelola,
+  hapusMutasiKas,
+  batalkanTransferKas,
+} from '@/app/actions/bank'
 import { formatTanggal, todayJakarta } from '@/lib/format'
 import { CASH_TYPE_LABEL, CASH_TYPE_MANUAL } from '@/lib/constants'
 import type { AkunBank, HakPengelola, MutasiKas } from '@/lib/queries/bank'
@@ -34,6 +49,7 @@ export function KasClient({
 }) {
   const [filterAkun, setFilterAkun] = React.useState<string>('semua')
   const [openMutasi, setOpenMutasi] = React.useState(false)
+  const [openTransfer, setOpenTransfer] = React.useState(false)
   const [openPrive, setOpenPrive] = React.useState(false)
 
   const akunAktif = React.useMemo(() => akun.filter((a) => a.is_active), [akun])
@@ -155,6 +171,20 @@ export function KasClient({
                   <span className="hidden lg:inline">Cairkan Hak Pengelola</span>
                   <span className="lg:hidden">Cairkan</span>
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setOpenTransfer(true)}
+                  disabled={akunAktif.length < 2}
+                  title={
+                    akunAktif.length < 2
+                      ? 'Butuh minimal 2 rekening aktif untuk transfer antar rekening'
+                      : undefined
+                  }
+                >
+                  <ArrowLeftRight />
+                  <span className="hidden lg:inline">Transfer Antar Rekening</span>
+                  <span className="lg:hidden">Transfer</span>
+                </Button>
                 <Button onClick={() => setOpenMutasi(true)}>
                   <Plus />
                   <span className="hidden sm:inline">Catat Mutasi</span>
@@ -180,7 +210,7 @@ export function KasClient({
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Money value={row.amount} colored className="font-medium" />
-                {canWrite && !row.is_auto ? <TombolHapusMutasi id={row.id} /> : null}
+                {canWrite && !row.is_auto ? <TombolHapusMutasi row={row} /> : null}
               </div>
             </div>
             <p className="text-label text-ink-muted">
@@ -193,6 +223,11 @@ export function KasClient({
       <DialogMutasiKas
         open={openMutasi}
         onOpenChange={setOpenMutasi}
+        akun={akunAktif}
+      />
+      <DialogTransferRekening
+        open={openTransfer}
+        onOpenChange={setOpenTransfer}
         akun={akunAktif}
       />
       <DialogCairkanPengelola
@@ -261,6 +296,11 @@ function kolomMutasi(canWrite: boolean): ColumnDef<MutasiKas, any>[] {
               <Lock className="size-3 text-ink-subtle" />
             </span>
           ) : null}
+          {row.original.ref_table === 'transfer_manual' ? (
+            <span title="Bagian dari transfer antar rekening">
+              <ArrowLeftRight className="size-3 text-ink-subtle" />
+            </span>
+          ) : null}
         </span>
       ),
     },
@@ -282,38 +322,57 @@ function kolomMutasi(canWrite: boolean): ColumnDef<MutasiKas, any>[] {
             enableSorting: false,
             meta: { align: 'right' as const },
             cell: ({ row }: any) =>
-              row.original.is_auto ? null : <TombolHapusMutasi id={row.original.id} />,
+              row.original.is_auto ? null : <TombolHapusMutasi row={row.original} />,
           } as ColumnDef<MutasiKas, any>,
         ]
       : []),
   ]
 }
 
-function TombolHapusMutasi({ id }: { id: string }) {
+function TombolHapusMutasi({ row }: { row: MutasiKas }) {
   const { confirm, dialog } = useConfirm()
   const { jalankan } = useAksi()
+  const transfer = row.ref_table === 'transfer_manual'
 
   return (
     <>
       <RowActions
         actions={[
-          {
-            label: 'Hapus',
-            icon: Trash2,
-            tone: 'danger',
-            onSelect: () =>
-              confirm({
-                title: 'Hapus mutasi ini?',
-                description:
-                  'Mutasi manual ini akan dihapus dan saldo rekening menyesuaikan kembali.',
-                confirmLabel: 'Ya, hapus',
-                successMessage: 'Mutasi dihapus',
-                onConfirm: async () => {
-                  const ok = await jalankan(() => hapusMutasiKas(id))
-                  if (!ok) throw new Error('')
-                },
-              }),
-          },
+          transfer
+            ? {
+                label: 'Batalkan Transfer',
+                icon: Trash2,
+                tone: 'danger',
+                onSelect: () =>
+                  confirm({
+                    title: 'Batalkan transfer ini?',
+                    description:
+                      'Kedua sisi transfer (keluar & masuk) akan dihapus bareng dan saldo kedua rekening menyesuaikan kembali.',
+                    confirmLabel: 'Ya, batalkan',
+                    successMessage: 'Transfer dibatalkan',
+                    onConfirm: async () => {
+                      const ok = await jalankan(() => batalkanTransferKas(row.ref_id!))
+                      if (!ok) throw new Error('')
+                    },
+                  }),
+              }
+            : {
+                label: 'Hapus',
+                icon: Trash2,
+                tone: 'danger',
+                onSelect: () =>
+                  confirm({
+                    title: 'Hapus mutasi ini?',
+                    description:
+                      'Mutasi manual ini akan dihapus dan saldo rekening menyesuaikan kembali.',
+                    confirmLabel: 'Ya, hapus',
+                    successMessage: 'Mutasi dihapus',
+                    onConfirm: async () => {
+                      const ok = await jalankan(() => hapusMutasiKas(row.id))
+                      if (!ok) throw new Error('')
+                    },
+                  }),
+              },
         ]}
       />
       {dialog}
@@ -432,6 +491,125 @@ function DialogMutasiKas({
           Pembelian unit, penjualan, perbaikan, biaya operasional, dan setoran investor tidak ada di
           daftar ini karena sudah tercatat otomatis dari transaksinya masing-masing.
         </p>
+      </div>
+    </FormDialog>
+  )
+}
+
+/* -------------------------- Dialog transfer rekening ---------------------- */
+
+function DialogTransferRekening({
+  open,
+  onOpenChange,
+  akun,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  akun: AkunBank[]
+}) {
+  const [dariId, setDariId] = React.useState('')
+  const [keId, setKeId] = React.useState('')
+  const [tanggal, setTanggal] = React.useState(todayJakarta())
+  const [nominal, setNominal] = React.useState(0)
+  const [keterangan, setKeterangan] = React.useState('')
+
+  React.useEffect(() => {
+    if (!open) return
+    setDariId(akun.find((a) => a.is_default)?.id ?? akun[0]?.id ?? '')
+    setKeId('')
+    setTanggal(todayJakarta())
+    setNominal(0)
+    setKeterangan('')
+  }, [open, akun])
+
+  const dari = akun.find((a) => a.id === dariId)
+  const saldoCukup = dari ? dari.saldo >= nominal : false
+
+  return (
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="sm"
+      title="Transfer Antar Rekening"
+      description="Untuk pindah dana antar rekening milik sendiri — kedua sisinya (keluar & masuk) langsung tercatat sekali submit."
+      successMessage="Transfer tercatat di kedua rekening"
+      disabled={!dariId || !keId || dariId === keId || nominal <= 0 || !saldoCukup}
+      onSubmit={() =>
+        catatTransferRekening({
+          dari_bank_account_id: dariId,
+          ke_bank_account_id: keId,
+          tanggal,
+          nominal,
+          keterangan,
+        })
+      }
+    >
+      <div className="space-y-4">
+        <FormGrid>
+          <Field label="Dari Rekening" required htmlFor="transfer-dari">
+            <Select value={dariId} onValueChange={setDariId}>
+              <SelectTrigger id="transfer-dari">
+                <SelectValue placeholder="Pilih rekening asal" />
+              </SelectTrigger>
+              <SelectContent>
+                {akun.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.nama}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="Ke Rekening" required htmlFor="transfer-ke">
+            <Select value={keId} onValueChange={setKeId}>
+              <SelectTrigger id="transfer-ke">
+                <SelectValue placeholder="Pilih rekening tujuan" />
+              </SelectTrigger>
+              <SelectContent>
+                {akun
+                  .filter((a) => a.id !== dariId)
+                  .map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.nama}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </FormGrid>
+
+        <Field label="Tanggal" required htmlFor="transfer-tgl">
+          <Input
+            id="transfer-tgl"
+            type="date"
+            value={tanggal}
+            onChange={(e) => setTanggal(e.target.value)}
+          />
+        </Field>
+
+        <Field
+          label="Nominal"
+          required
+          hint={
+            dari
+              ? !saldoCukup
+                ? `Saldo ${dari.nama} tidak cukup (saldo ${dari.saldo.toLocaleString('id-ID')})`
+                : `Saldo ${dari.nama} saat ini: Rp ${dari.saldo.toLocaleString('id-ID')}`
+              : undefined
+          }
+        >
+          <MoneyInput value={nominal} onChange={setNominal} />
+        </Field>
+
+        <Field label="Keterangan" htmlFor="transfer-ket">
+          <Textarea
+            id="transfer-ket"
+            value={keterangan}
+            onChange={(e) => setKeterangan(e.target.value)}
+            placeholder="Contoh: pindahkan dana ke rekening operasional"
+          />
+        </Field>
       </div>
     </FormDialog>
   )
