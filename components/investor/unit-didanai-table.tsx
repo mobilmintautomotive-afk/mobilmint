@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Car } from 'lucide-react'
 import { DataTable } from '@/components/shared/data-table'
@@ -22,8 +23,9 @@ export type UnitDidanai = {
 }
 
 /**
- * Tabel unit yang didanai investor. Sengaja tanpa link ke halaman internal
- * pengelola — investor hanya membaca.
+ * Tabel unit yang didanai investor. Setiap baris tautan ke halaman detail
+ * unit versi investor (foto, spesifikasi, riwayat perbaikan, bagi hasil) —
+ * bukan halaman internal pengelola, jadi tidak pernah menyebut investor lain.
  */
 export function UnitDidanaiTable({ rows }: { rows: UnitDidanai[] }) {
   const columns = React.useMemo<ColumnDef<UnitDidanai, any>[]>(
@@ -32,10 +34,10 @@ export function UnitDidanaiTable({ rows }: { rows: UnitDidanai[] }) {
         accessorKey: 'unit',
         header: 'Unit',
         cell: ({ row }) => (
-          <div className="min-w-0">
+          <Link href={`/investor/unit/${row.original.car_id}`} className="block min-w-0 hover:text-accent">
             <p className="truncate font-medium text-ink">{row.original.unit}</p>
             <p className="text-label text-ink-muted">{row.original.no_polisi ?? '-'}</p>
-          </div>
+          </Link>
         ),
       },
       {
@@ -96,7 +98,7 @@ export function UnitDidanaiTable({ rows }: { rows: UnitDidanai[] }) {
         />
       }
       mobileCard={(row) => (
-        <div className="space-y-2">
+        <Link href={`/investor/unit/${row.car_id}`} className="block space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate font-medium text-ink">{row.unit}</p>
@@ -116,7 +118,7 @@ export function UnitDidanaiTable({ rows }: { rows: UnitDidanai[] }) {
               <Money value={row.bagi_hasil} colored className="font-medium" />
             )}
           </div>
-        </div>
+        </Link>
       )}
     />
   )

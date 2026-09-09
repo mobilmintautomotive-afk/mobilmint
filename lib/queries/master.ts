@@ -98,7 +98,7 @@ export async function getDetailMobil(id: string) {
   )
 }
 
-function normalisasiCar(r: any): CarOverview {
+export function normalisasiCar(r: any): CarOverview {
   return {
     ...r,
     modal_pembelian: num(r.modal_pembelian),

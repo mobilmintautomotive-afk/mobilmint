@@ -1,8 +1,9 @@
 import 'server-only'
 import { aman, num } from './base'
+import { normalisasiCar } from './master'
 import { formatBulan, umurHari } from '@/lib/format'
 import { susunWaterfallInvestor, type BarisWaterfall } from '@/lib/calc'
-import type { InvestorLedger } from '@/types/database'
+import type { InvestorLedger, CarOverview } from '@/types/database'
 
 export type DashboardInvestor = {
   nama: string
@@ -224,4 +225,176 @@ export async function getDashboardInvestor(investorId: string) {
       }),
     }
   }, KOSONG)
+}
+
+export type DetailUnitInvestor = {
+  car: CarOverview | null
+  funding: { amount: number; porsi_pct: number; nisbah_investor_pct: number } | null
+  purchase: { tanggal_beli: string; harga_beli: number; rincian_biaya_lain: any[] } | null
+  repairs: {
+    id: string
+    jenis_perbaikan: string
+    deskripsi: string | null
+    biaya: number
+    tanggal_masuk: string
+    tanggal_selesai: string | null
+    status: string
+    vendor_nama: string | null
+  }[]
+  sale: {
+    no_transaksi: string
+    tanggal_jual: string
+    harga_jual: number
+    hpp_snapshot: number
+    laba_kotor: number
+    laba_bersih: number
+    komisi_sales: number
+    biaya_lain: number
+  } | null
+  booking: {
+    no_booking: string
+    tanggal_booking: string
+    harga_sepakat: number
+    dp_amount: number
+  } | null
+  profitSharingDetail: {
+    tanggal_proses: string
+    modal_awal: number
+    porsi_pct: number
+    bagi_hasil: number
+    modal_kembali: number
+    total_kembali: number
+    sudah_ditransfer: boolean
+  } | null
+}
+
+const DETAIL_UNIT_KOSONG: DetailUnitInvestor = {
+  car: null,
+  funding: null,
+  purchase: null,
+  repairs: [],
+  sale: null,
+  booking: null,
+  profitSharingDetail: null,
+}
+
+/**
+ * Detail SATU unit khusus buat investor — versi "cuma baca" dari halaman
+ * detail mobil punya admin. Sengaja tidak pernah menyebut investor lain
+ * (nama/nominal pendana lain) meskipun unitnya urun dana bareng — investor
+ * cuma boleh lihat porsi modal & bagi hasil miliknya sendiri.
+ *
+ * `funding` yang null berarti investor ini BUKAN pendana unit tsb — caller
+ * wajib redirect/notFound, jangan pernah menampilkan `car` dalam kondisi ini
+ * (itu jalan bocor lihat unit investor lain lewat tebak-tebak ID).
+ */
+export async function getDetailUnitInvestor(carId: string, investorId: string) {
+  return aman<DetailUnitInvestor>(async (db) => {
+    const funding = await db
+      .from('car_fundings')
+      .select('amount, porsi_pct, nisbah_investor_pct')
+      .eq('car_id', carId)
+      .eq('investor_id', investorId)
+      .maybeSingle()
+    if (funding.error) throw new Error(funding.error.message)
+    if (!funding.data) return DETAIL_UNIT_KOSONG
+
+    const [car, purchase, repairs, sale, booking] = await Promise.all([
+      db.from('v_car_overview').select('*').eq('id', carId).maybeSingle(),
+      db.from('purchases').select('tanggal_beli, harga_beli, rincian_biaya_lain').eq('car_id', carId).maybeSingle(),
+      db
+        .from('repairs')
+        .select('id, jenis_perbaikan, deskripsi, biaya, tanggal_masuk, tanggal_selesai, status, vendors(nama)')
+        .eq('car_id', carId)
+        .order('tanggal_masuk', { ascending: true }),
+      db
+        .from('car_sales')
+        .select('no_transaksi, tanggal_jual, harga_jual, hpp_snapshot, laba_kotor, laba_bersih, komisi_sales, biaya_lain, id')
+        .eq('car_id', carId)
+        .maybeSingle(),
+      db
+        .from('bookings')
+        .select('no_booking, tanggal_booking, harga_sepakat, dp_amount')
+        .eq('car_id', carId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+    if (car.error) throw new Error(car.error.message)
+
+    let profitSharingDetail: DetailUnitInvestor['profitSharingDetail'] = null
+    if (sale.data?.id) {
+      const ps = await db
+        .from('profit_sharings')
+        .select('id, tanggal_proses, is_reversed')
+        .eq('car_sale_id', sale.data.id)
+        .maybeSingle()
+      if (ps.data && !ps.data.is_reversed) {
+        const psd = await db
+          .from('profit_sharing_details')
+          .select('modal_awal, porsi_pct, bagi_hasil, modal_kembali, total_kembali, sudah_ditransfer')
+          .eq('profit_sharing_id', ps.data.id)
+          .eq('investor_id', investorId)
+          .maybeSingle()
+        if (psd.data) {
+          profitSharingDetail = {
+            tanggal_proses: ps.data.tanggal_proses,
+            modal_awal: num(psd.data.modal_awal),
+            porsi_pct: num(psd.data.porsi_pct),
+            bagi_hasil: num(psd.data.bagi_hasil),
+            modal_kembali: num(psd.data.modal_kembali),
+            total_kembali: num(psd.data.total_kembali),
+            sudah_ditransfer: Boolean(psd.data.sudah_ditransfer),
+          }
+        }
+      }
+    }
+
+    return {
+      car: car.data ? normalisasiCar(car.data) : null,
+      funding: {
+        amount: num(funding.data.amount),
+        porsi_pct: num(funding.data.porsi_pct),
+        nisbah_investor_pct: num(funding.data.nisbah_investor_pct),
+      },
+      purchase: purchase.data
+        ? {
+            tanggal_beli: purchase.data.tanggal_beli,
+            harga_beli: num(purchase.data.harga_beli),
+            rincian_biaya_lain: (purchase.data.rincian_biaya_lain as any[]) ?? [],
+          }
+        : null,
+      repairs: ((repairs.data ?? []) as any[]).map((r) => ({
+        id: r.id,
+        jenis_perbaikan: r.jenis_perbaikan,
+        deskripsi: r.deskripsi,
+        biaya: num(r.biaya),
+        tanggal_masuk: r.tanggal_masuk,
+        tanggal_selesai: r.tanggal_selesai,
+        status: r.status,
+        vendor_nama: r.vendors?.nama ?? null,
+      })),
+      sale: sale.data
+        ? {
+            no_transaksi: sale.data.no_transaksi,
+            tanggal_jual: sale.data.tanggal_jual,
+            harga_jual: num(sale.data.harga_jual),
+            hpp_snapshot: num(sale.data.hpp_snapshot),
+            laba_kotor: num(sale.data.laba_kotor),
+            laba_bersih: num(sale.data.laba_bersih),
+            komisi_sales: num(sale.data.komisi_sales),
+            biaya_lain: num(sale.data.biaya_lain),
+          }
+        : null,
+      booking: booking.data
+        ? {
+            no_booking: booking.data.no_booking,
+            tanggal_booking: booking.data.tanggal_booking,
+            harga_sepakat: num(booking.data.harga_sepakat),
+            dp_amount: num(booking.data.dp_amount),
+          }
+        : null,
+      profitSharingDetail,
+    }
+  }, DETAIL_UNIT_KOSONG)
 }
