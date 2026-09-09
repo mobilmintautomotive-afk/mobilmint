@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Car } from 'lucide-react'
@@ -14,6 +15,7 @@ export type UnitDidanai = {
   car_id: string
   unit: string
   no_polisi: string | null
+  foto_url: string | null
   status: string
   tanggal_beli: string | null
   porsi_modal: number
@@ -23,21 +25,34 @@ export type UnitDidanai = {
 }
 
 /**
- * Tabel unit yang didanai investor. Setiap baris tautan ke halaman detail
- * unit versi investor (foto, spesifikasi, riwayat perbaikan, bagi hasil) —
- * bukan halaman internal pengelola, jadi tidak pernah menyebut investor lain.
+ * Tabel unit yang didanai investor. Seluruh baris bisa diklik ke halaman
+ * detail unit versi investor (foto, spesifikasi, riwayat perbaikan, bagi
+ * hasil) -- bukan halaman internal pengelola, jadi tidak pernah menyebut
+ * investor lain.
  */
 export function UnitDidanaiTable({ rows }: { rows: UnitDidanai[] }) {
+  const router = useRouter()
+
   const columns = React.useMemo<ColumnDef<UnitDidanai, any>[]>(
     () => [
       {
         accessorKey: 'unit',
         header: 'Unit',
         cell: ({ row }) => (
-          <Link href={`/investor/unit/${row.original.car_id}`} className="block min-w-0 hover:text-accent">
-            <p className="truncate font-medium text-ink">{row.original.unit}</p>
-            <p className="text-label text-ink-muted">{row.original.no_polisi ?? '-'}</p>
-          </Link>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-neutral-soft">
+              {row.original.foto_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={row.original.foto_url} alt="" className="size-full object-cover" />
+              ) : (
+                <Car className="size-4 text-ink-subtle" />
+              )}
+            </span>
+            <span className="min-w-0">
+              <p className="truncate font-medium text-ink">{row.original.unit}</p>
+              <p className="text-label text-ink-muted">{row.original.no_polisi ?? '-'}</p>
+            </span>
+          </div>
         ),
       },
       {
@@ -90,6 +105,7 @@ export function UnitDidanaiTable({ rows }: { rows: UnitDidanai[] }) {
       searchKeys={['unit', 'no_polisi']}
       searchPlaceholder="Cari mobil..."
       exportName="unit-yang-saya-danai"
+      onRowClick={(row) => router.push(`/investor/unit/${row.car_id}`)}
       empty={
         <EmptyState
           icon={Car}
@@ -100,9 +116,19 @@ export function UnitDidanaiTable({ rows }: { rows: UnitDidanai[] }) {
       mobileCard={(row) => (
         <Link href={`/investor/unit/${row.car_id}`} className="block space-y-2">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate font-medium text-ink">{row.unit}</p>
-              <p className="text-label text-ink-muted">{row.no_polisi ?? '-'}</p>
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-neutral-soft">
+                {row.foto_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={row.foto_url} alt="" className="size-full object-cover" />
+                ) : (
+                  <Car className="size-4 text-ink-subtle" />
+                )}
+              </span>
+              <span className="min-w-0">
+                <p className="truncate font-medium text-ink">{row.unit}</p>
+                <p className="text-label text-ink-muted">{row.no_polisi ?? '-'}</p>
+              </span>
             </div>
             <StatusBadge status={row.status} />
           </div>

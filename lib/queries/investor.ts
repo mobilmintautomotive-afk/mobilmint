@@ -21,6 +21,7 @@ export type DashboardInvestor = {
     car_id: string
     unit: string
     no_polisi: string | null
+    foto_url: string | null
     status: string
     tanggal_beli: string | null
     porsi_modal: number
@@ -90,7 +91,7 @@ export async function getDashboardInvestor(investorId: string) {
         .order('created_at', { ascending: true }),
       db
         .from('car_fundings')
-        .select('*, cars(merek, tipe, tahun, no_polisi, status)')
+        .select('*, cars(merek, tipe, tahun, no_polisi, status, foto_urls)')
         .eq('investor_id', investorId),
     ])
 
@@ -132,6 +133,7 @@ export async function getDashboardInvestor(investorId: string) {
         car_id: f.car_id as string,
         unit: f.cars ? `${f.cars.merek} ${f.cars.tipe} ${f.cars.tahun}` : '-',
         no_polisi: f.cars?.no_polisi ?? null,
+        foto_url: f.cars?.foto_urls?.[0] ?? null,
         status: f.cars?.status ?? 'DIBELI',
         tanggal_beli: tglBeli.get(f.car_id) ?? null,
         porsi_modal: num(f.amount),
