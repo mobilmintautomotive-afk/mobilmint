@@ -44,8 +44,23 @@ export async function simpanPerbaikan(input: unknown) {
       ambil_dari_modal: v.ambil_dari_modal,
     }
 
+    // Edit lewat RPC atomik supaya potongan modal investor (ALOKASI_MODAL)
+    // ikut disesuaikan dengan biaya / centang ambil_dari_modal yang baru.
     if (v.id) {
-      cek(await db.from('repairs').update(values).eq('id', v.id).select('id'))
+      cek(
+        await db.rpc('update_repair_funding', {
+          p_repair_id: v.id,
+          p_car_id: values.car_id,
+          p_vendor_id: values.vendor_id,
+          p_jenis_perbaikan: values.jenis_perbaikan,
+          p_deskripsi: values.deskripsi,
+          p_biaya: values.biaya,
+          p_tanggal_masuk: values.tanggal_masuk,
+          p_tanggal_selesai: values.tanggal_selesai,
+          p_status: values.status,
+          p_ambil_dari_modal: values.ambil_dari_modal,
+        }),
+      )
       return { id: v.id }
     }
 
